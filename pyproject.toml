@@ -14,7 +14,7 @@ authors = [
   { name = "Pranav Kalidindi", email = "pranav.kalidindi@quantinuum.com" }, 
 ]
 
-dependencies = ["pytket", "cuquantum-cu11"]
+dependencies = ["pytket", "cuquantum-cu12"]
 
 [dependency-groups]
 dev = [

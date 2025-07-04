@@ -18,7 +18,7 @@ from abc import abstractmethod
 from typing import List, Optional, Sequence, Union
 from uuid import uuid4
 
-from cuquantum.bindings._utils import cudaDataType
+from cuquantum import cudaDataType
 
 from pytket._tket.circuit import Circuit, OpType
 from pytket.backends.backend import Backend
@@ -208,6 +208,7 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         """
         handle_list = []
         for circuit in circuits:
+            print(circuit.get_commands())
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
                     libhandle,  circuit.n_qubits, "zero", dtype=cudaDataType.CUDA_C_64F

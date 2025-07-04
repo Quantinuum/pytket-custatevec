@@ -61,9 +61,6 @@ class CuStateVecHandle:
 
         self._handle = cusv.create()
 
-        stream = cp.cuda.Stream()
-        cusv.set_stream(handle, stream.ptr)
-
         def malloc(size, stream):
             return cp.cuda.runtime.mallocAsync(size, stream)
 
@@ -71,8 +68,10 @@ class CuStateVecHandle:
             cp.cuda.runtime.freeAsync(ptr, stream)
 
         handler = (malloc, free, "memory_handler")
-
+        stream = cp.cuda.Stream()
+        self.stream = stream
         cusv.set_device_mem_handler(self._handle, handler)
+        cusv.set_stream(self._handle, stream.ptr)
 
     @property
     def handle(self) -> Any:

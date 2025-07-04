@@ -48,16 +48,17 @@ def initial_statevector(
     if dtype is None:
         dtype = cudaDataType.CUDA_C_64F
     d = 2**n_qubits
-    d_sv = cp.empty(d, dtype=cuquantum_to_np_dtype(dtype))
+    d_sv = cp.empty(d, dtype=cp.complex128)
 
-    cusv.initialize_state_vector(
-        handle.handle,
-        d_sv.data.ptr,
-        dtype,
-        n_qubits,
-        _initial_statevector_dict[type],
-    )
-
+    with handle.stream:
+        cusv.initialize_state_vector(
+            handle.handle,
+            d_sv.data.ptr,
+            cudaDataType.CUDA_C_64F,
+            n_qubits,
+            _initial_statevector_dict[type],
+        )
+    handle.stream.synchronize()
     return CuStateVector(d_sv, dtype)
 
 

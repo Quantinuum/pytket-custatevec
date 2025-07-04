@@ -14,7 +14,7 @@
 
 from numpy.typing import NDArray
 from pytket.backends.backendresult import BackendResult
-from pytket.circuit import Qubit, Circuit, Bit
+from pytket.circuit import Qubit, Circuit, Bit, OpType
 
 
 def _reorder_qlist(
