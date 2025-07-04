@@ -18,18 +18,21 @@ from typing import Literal
 
 import cupy as cp  # type: ignore
 import cuquantum.custatevec as cusv  # type: ignore
-from apply import apply_matrix, apply_pauli_rotation, pytket_paulis_to_custatevec_paulis
-from cuquantum import cudaDataType
+from cuquantum.bindings._utils import cudaDataType
 from cuquantum.bindings.custatevec import StateVectorType
-from dtype import cuquantum_to_np_dtype
-from gate_definitions import get_gate_matrix, get_uncontrolled_gate
-from handle import CuStateVecHandle
-from logger import set_logger
-from statevector import CuStateVector
-from sympy import Expr
-from utils import _remove_meas_and_implicit_swaps
 
-from pytket.circuit import Bit, Circuit, OpType, PauliExpBox, Qubit
+from pytket.circuit import Bit, Circuit, OpType, Qubit
+
+from .apply import (
+    apply_matrix,
+    apply_pauli_rotation,
+    pytket_paulis_to_custatevec_paulis,
+)
+from .gate_definitions import get_gate_matrix, get_uncontrolled_gate
+from .handle import CuStateVecHandle
+from .logger import set_logger
+from .statevector import CuStateVector
+from .utils import _remove_meas_and_implicit_swaps
 
 _initial_statevector_dict: dict[str, StateVectorType] = {
     "zero": StateVectorType.ZERO,
@@ -48,16 +51,17 @@ def initial_statevector(
     if dtype is None:
         dtype = cudaDataType.CUDA_C_64F
     d = 2**n_qubits
-    d_sv = cp.empty(d, dtype=cuquantum_to_np_dtype(dtype))
+    d_sv = cp.empty(d, dtype=cp.complex128)
 
-    cusv.initialize_state_vector(
-        handle.handle,
-        d_sv.data.ptr,
-        dtype,
-        n_qubits,
-        _initial_statevector_dict[type],
-    )
-
+    with handle.stream:
+        cusv.initialize_state_vector(
+            handle.handle,
+            d_sv.data.ptr,
+            cudaDataType.CUDA_C_64F,
+            n_qubits,
+            _initial_statevector_dict[type],
+        )
+    handle.stream.synchronize()
     return CuStateVector(d_sv, dtype)
 
 
@@ -69,70 +73,80 @@ def run_circuit(
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
 ) -> dict[Qubit, Bit]:
-    state : CuStateVector
+    state: CuStateVector
     if type(initial_state) is str:
         state = initial_statevector(
-            handle,  circuit.n_qubits, initial_state, dtype=cudaDataType.CUDA_C_64F,
+            handle,
+            circuit.n_qubits,
+            initial_state,
+            dtype=cudaDataType.CUDA_C_64F,
         )
     else:
-        state = initial_state
+        state = initial_state # IMPORTANT: User needs to follow little-endian convention of cuStateVec 
     if matrix_dtype is None:
         matrix_dtype = cudaDataType.CUDA_C_64F
-
     _logger = set_logger("GeneralState", level=loglevel, file=logfile)
 
     # Remove end-of-circuit measurements and keep track of them separately
     # It also resolves implicit SWAPs
-    _measurements : dict[Qubit, Bit]
+    _measurements: dict[Qubit, Bit]
     circuit, _measurements = _remove_meas_and_implicit_swaps(circuit)
 
     # Identify each qubit with an index
-    _qubit_idx_map : dict[Qubit, int] = {q: i for i, q in enumerate(sorted(circuit.qubits))}
+    # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
+    # (qubit 0 = least significant) vs pytket's big-endian (qubit 0 = most significant).
+    _qubit_idx_map: dict[Qubit, int] = {
+        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
+    }
 
     _phase = circuit.phase
-    if type(_phase) is Expr:
-        raise NotImplementedError("Symbols not yet supported.")
-    state.apply_phase(_phase)
+    if type(_phase) is float:
+        state.apply_phase(_phase)
+    else:
+        raise NotImplementedError("Symbols not yet supported.")  # noqa: EM101
 
     # Apply all gates to the initial state
     commands = circuit.get_commands()
     for com in commands:
         op = com.op
         if len(op.free_symbols()) > 0:
-            raise NotImplementedError("Symbolic circuits not yet supported")
-        
+            raise NotImplementedError("Symbolic circuits not yet supported")  # noqa: EM101
         gate_name = op.get_name()
         qubits = [_qubit_idx_map[x] for x in com.qubits]
         uncontrolled_gate, n_controls = get_uncontrolled_gate(gate_name)
         controls, targets = qubits[:n_controls], qubits[n_controls:]
 
-        # TODO: Also check if Rz, Rx, ... should be included in this first branch
-        if type(op) is PauliExpBox:
-            cusv_paulis = list(map(pytket_paulis_to_custatevec_paulis, op.get_paulis()))
-            angle : float = op.get_phase()
+        # TODO: Check if PauliExpBox should go there and what is does
+        if op.type in (OpType.Rx, OpType.Ry, OpType.Rz):
+            cusv_paulis, angle_radians = pytket_paulis_to_custatevec_paulis(
+                pauli_rotation_type=op.type,
+                angle_pi=float(op.params[0]),
+            )
             apply_pauli_rotation(
                 handle=handle,
                 paulis=cusv_paulis,
                 statevector=state,
-                angle=angle,
-                targets=targets
+                angle=angle_radians,
+                targets=targets,
             )
         else:
             adjoint = False
             if gate_name[-2:] == "dg":
                 adjoint = True
                 gate_name = gate_name[:-2]
-            matrix = get_gate_matrix(uncontrolled_gate, op.params, matrix_dtype)
+            uncontrolled_gate_name_without_parameter = uncontrolled_gate.split("(")[0]
+            matrix = get_gate_matrix(
+                uncontrolled_gate_name_without_parameter, op.params, matrix_dtype,
+            )
             apply_matrix(
                 handle=handle,
                 matrix=matrix,
                 statevector=state,
                 targets=targets,
                 controls=controls,
-                control_bit_values=[0] * n_controls,
+                control_bit_values=[1] * n_controls,
                 adjoint=adjoint,
             )
-
     handle.stream.synchronize()
 
     return _measurements

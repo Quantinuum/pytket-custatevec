@@ -1,7 +1,9 @@
 import warnings
-from typing import Sequence, Any
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
+from cuquantum.bindings._utils import cudaDataType
 from numpy.typing import DTypeLike, NDArray
 
 try:
@@ -10,12 +12,12 @@ except ImportError:
     warnings.warn("local settings failed to import cupy", ImportWarning)
 
 from pytket.extensions.custatevec.gate_classes import (
+    CuStateVecMatrix,
     ParameterizedGate,
     UnparameterizedGate,
-    CuStateVecMatrix,
 )
 
-from dtype import cuquantum_to_np_dtype
+from .dtype import cuquantum_to_np_dtype
 
 _I = np.eye(2)
 
@@ -56,10 +58,10 @@ _SWAP = np.array(
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 1.0],
-    ]
+    ],
 )
 
-SWAP = UnparameterizedGate("SWAP", _SWAP)
+SWAP = UnparameterizedGate("SWAP", _SWAP) # invariant under qubit permutation
 
 def _Rx(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     param_pi_2 = params[0] * np.pi / 2
@@ -93,6 +95,16 @@ def _Rz(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
 
 Rz = ParameterizedGate("Rz", _Rz, 1, 1)
 
+def _TK1(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
+    return (
+        _Rz([params[0]], dtype=dtype)
+        @ _Rx([params[1]], dtype=dtype)
+        @ _Rz([params[2]], dtype=dtype)
+    )
+
+
+TK1 = ParameterizedGate("TK1", _TK1, 1, 3)
+
 def _U3(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     return (
         np.exp((params[1] + params[2]) * np.pi * 1.0j / 2, dtype=dtype)
@@ -125,7 +137,7 @@ def _ISWAP(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, i_s, 0.0],
             [0.0, i_s, c, 0.0],
             [0.0, 0.0, 0.0, 1.0],
-        ]
+        ],
     )
 
 
@@ -142,7 +154,7 @@ def _PhasedISWAP(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, i_s * np.exp(2.0j * np.pi * params[0], dtype=dtype), 0.0],
             [0.0, i_s * np.exp(-2.0j * np.pi * params[0], dtype=dtype), c, 0.0],
             [0.0, 0.0, 0.0, 1.0],
-        ]
+        ],
     )
 
 
@@ -159,7 +171,7 @@ def _XXPhase(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, -i_s, 0.0],
             [0.0, -i_s, c, 0.0],
             [-i_s, 0.0, 0.0, c],
-        ]
+        ],
     ).reshape((2,) * 4)
 
 
@@ -176,7 +188,7 @@ def _YYPhase(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, -i_s, 0.0],
             [0.0, -i_s, c, 0.0],
             [i_s, 0.0, 0.0, c],
-        ]
+        ],
     )
 
 
@@ -219,6 +231,7 @@ gate_list = [
     Rx,
     Ry,
     Rz,
+    TK1,
     U1,
     U2,
     U3,
@@ -250,6 +263,14 @@ _control_to_gate_map: dict[str, tuple[str, int]] = {
 
 
 def get_uncontrolled_gate(name: str) -> tuple[str, int]:
+    """Retrieve the corresponding uncontrolled gate name and control level.
+
+    Args:
+        name (str): The name of the controlled gate.
+
+    Returns:
+        tuple[str, int]: A tuple containing the uncontrolled gate name and the control level.
+    """
     try:
         return _control_to_gate_map[name]
     except KeyError:
@@ -257,13 +278,26 @@ def get_uncontrolled_gate(name: str) -> tuple[str, int]:
 
 
 def get_gate_matrix(
-    gate_name: str, parameters: Sequence[float], cuda_dtype: cudaDataType
+    gate_name: str, parameters: Sequence[float], cuda_dtype: cudaDataType,
 ) -> CuStateVecMatrix:
+    """Retrieve the matrix representation of a quantum gate.
+
+    Args:
+        gate_name (str): The name of the gate.
+        parameters (Sequence[float]): The parameters for the gate.
+        cuda_dtype (cudaDataType): The CUDA data type for the gate matrix.
+
+    Returns:
+        CuStateVecMatrix: The matrix representation of the gate in CuPy format.
+
+    Raises:
+        ValueError: If the gate name is not found in the gate dictionary.
+    """
     dtype = cuquantum_to_np_dtype(cuda_dtype)
     try:
         gate = gate_dict[gate_name]
         return CuStateVecMatrix(
-            cp.array(gate.get(parameters, dtype), dtype=dtype), cuda_dtype
+            cp.array(gate.get(parameters, dtype), dtype=dtype), cuda_dtype,
         )
     except KeyError:
         raise ValueError(f"Gate {gate_name} not found")

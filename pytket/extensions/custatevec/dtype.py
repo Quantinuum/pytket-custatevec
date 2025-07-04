@@ -1,5 +1,5 @@
 import numpy as np  # noqa: EXE002, D100
-from cuquantum import cudaDataType
+from cuquantum.bindings._utils import cudaDataType
 from numpy.typing import DTypeLike
 
 _cuquantum_to_np_dtype_map = {

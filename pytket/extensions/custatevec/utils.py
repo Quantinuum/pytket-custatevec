@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from numpy.typing import NDArray
+
 from pytket.backends.backendresult import BackendResult
-from pytket.circuit import Qubit, Circuit
+from pytket.circuit import Bit, Circuit, OpType, Qubit
 
 
 def _reorder_qlist(
-    post_select_dict: dict, qlist: list[Qubit]
+    post_select_dict: dict, qlist: list[Qubit],
 ) -> tuple[list[Qubit], Qubit]:
     """Reorder qlist so that post_select_qubit is first in the list.
 
@@ -30,7 +31,6 @@ def _reorder_qlist(
         Tuple containing a list of qubits reordered so that `post_select_qubit` is first
         in the list, and the post select qubit.
     """
-
     post_select_q = list(post_select_dict.keys())[0]
 
     pop_i = qlist.index(post_select_q)
@@ -44,7 +44,7 @@ def _reorder_qlist(
 
 
 def statevector_postselect(
-    qlist: list[Qubit], sv: NDArray, post_select_dict: dict[Qubit, int]
+    qlist: list[Qubit], sv: NDArray, post_select_dict: dict[Qubit, int],
 ) -> NDArray:
     """Post selects a statevector.
 
@@ -60,7 +60,6 @@ def statevector_postselect(
     Returns:
         Post selected statevector.
     """
-
     n = len(qlist)
     n_p = len(post_select_dict)
 
@@ -87,7 +86,7 @@ def statevector_postselect(
 
 
 def circuit_statevector_postselect(
-    circ: Circuit, post_select_dict: dict[Qubit, int]
+    circ: Circuit, post_select_dict: dict[Qubit, int],
 ) -> NDArray:
     """Post selects a circuit statevector. recursively calls
     itself if there are multiple post select qubits. Should only be
@@ -100,25 +99,36 @@ def circuit_statevector_postselect(
     Returns:
         Post selected statevector.
     """
-
     return statevector_postselect(
-        circ.qubits, circ.get_statevector(), post_select_dict
+        circ.qubits, circ.get_statevector(), post_select_dict,
     )  # TODO this does not account for global phase if just taking circuit
 
 
 def _remove_meas_and_implicit_swaps(circ: Circuit) -> tuple[Circuit, dict[Qubit, Bit]]:
-    """Convert a pytket Circuit to an equivalent circuit with no measurements or
-    implicit swaps. The measurements are returned as a map between qubits and bits.
+    """Converts a pytket Circuit to an equivalent circuit without measurements or implicit swaps.
 
-    Only supports end-of-circuit measurements, which are removed from the returned
-    circuit and added to the dictionary.
+    Measurements are extracted and returned as a mapping between qubits and bits.
+    This function only supports end-of-circuit measurements. Any mid-circuit
+    measurements or operations on classical bits will raise an error.
+
+    Args:
+        circ (Circuit): The input pytket Circuit.
+
+    Returns:
+        tuple[Circuit, dict[Qubit, Bit]]:
+            - A new Circuit object with measurements and implicit swaps removed.
+            - A dictionary mapping measured Qubits to their corresponding Bits.
+
+    Raises:
+        ValueError: If the circuit contains mid-circuit measurements or operations
+        on classical bits.
     """
     pure_circ = Circuit()
     for q in circ.qubits:
         pure_circ.add_qubit(q)
     q_perm = circ.implicit_qubit_permutation()
 
-    measure_map = dict()
+    measure_map = {}
     # Track measured Qubits to identify mid-circuit measurement
     measured_qubits = set()
 
@@ -127,15 +137,15 @@ def _remove_meas_and_implicit_swaps(circ: Circuit) -> tuple[Circuit, dict[Qubit,
 
         for q in cmd_qubits:
             if q in measured_qubits:
-                raise ValueError("Circuit contains a mid-circuit measurement")
+                raise ValueError("Circuit contains a mid-circuit measurement")  # noqa: EM101, TRY003
 
         if command.op.type == OpType.Measure:
             measure_map[cmd_qubits[0]] = command.bits[0]
             measured_qubits.add(cmd_qubits[0])
         else:
             if command.bits:
-                raise ValueError("Circuit contains an operation on a bit")
+                raise ValueError("Circuit contains an operation on a bit") # noqa: EM101, TRY003
             pure_circ.add_gate(command.op, cmd_qubits)
 
     pure_circ.add_phase(circ.phase)
-    return pure_circ, measure_map  # type: ignore
+    return pure_circ, measure_map
