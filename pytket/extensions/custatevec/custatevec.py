@@ -13,22 +13,23 @@
 # limitations under the License.
 from __future__ import annotations  # type: ignore
 
-from typing import Optional, Literal
+import logging
+from typing import Literal
 
 import cupy as cp  # type: ignore
 import cuquantum.custatevec as cusv  # type: ignore
+from apply import apply_matrix, apply_pauli_rotation, pytket_paulis_to_custatevec_paulis
+from cuquantum import cudaDataType
 from cuquantum.bindings.custatevec import StateVectorType
-
-from pytket.circuit import Circuit, PauliExpBox, OpType, Qubit, Bit
-from sympy import Expr
-
-from statevector import CuStateVector
-from handle import CuStateVecHandle
-from logger import set_logger
-from utils import _remove_meas_and_implicit_swaps
 from dtype import cuquantum_to_np_dtype
 from gate_definitions import get_gate_matrix, get_uncontrolled_gate
-from apply import apply_matrix, apply_pauli_rotation, pytket_paulis_to_custatevec_paulis
+from handle import CuStateVecHandle
+from logger import set_logger
+from statevector import CuStateVector
+from sympy import Expr
+from utils import _remove_meas_and_implicit_swaps
+
+from pytket.circuit import Bit, Circuit, OpType, PauliExpBox, Qubit
 
 _initial_statevector_dict: dict[str, StateVectorType] = {
     "zero": StateVectorType.ZERO,
@@ -42,7 +43,7 @@ def initial_statevector(
     handle: CuStateVecHandle,
     n_qubits: int,
     type: Literal["zero", "uniform", "ghz", "w"],
-    dtype: Optional[cudaDataType] = None,
+    dtype: cudaDataType | None = None,
 ) -> CuStateVector:
     if dtype is None:
         dtype = cudaDataType.CUDA_C_64F
@@ -64,14 +65,14 @@ def run_circuit(
     handle: CuStateVecHandle,
     circuit: Circuit,
     initial_state: CuStateVector | str = "zero",
-    matrix_dtype: Optional[cudaDataType] = None,
+    matrix_dtype: cudaDataType | None = None,
     loglevel: int = logging.WARNING,
-    logfile: Optional[str] = None,
+    logfile: str | None = None,
 ) -> dict[Qubit, Bit]:
     state : CuStateVector
     if type(initial_state) is str:
         state = initial_statevector(
-            handle, initial_state, circuit.n_qubits, dtype=cudaDataType.CUDA_C_64F
+            handle,  circuit.n_qubits, initial_state, dtype=cudaDataType.CUDA_C_64F,
         )
     else:
         state = initial_state
@@ -131,7 +132,7 @@ def run_circuit(
                 control_bit_values=[0] * n_controls,
                 adjoint=adjoint,
             )
-    
+
     handle.stream.synchronize()
 
     return _measurements

@@ -8,9 +8,13 @@ version = "0.0.1"
 description = "Extension for pytket providing access to cuStateVec functionality."
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Gabriel Matos", email = "gabriel.matos@quantinuum.com" }]
+authors = [
+  { name = "Gabriel Matos", email = "gabriel.matos@quantinuum.com"}, 
+  { name = "Fabian Finger", email = "fabian.finger@quantinuum.com" },
+  { name = "Pranav Kalidindi", email = "pranav.kalidindi@quantinuum.com" }, 
+]
 
-dependencies = ["cupy", "pytket"]
+dependencies = ["cupy-cuda12x", "pytket", "cuquantum-cu12"]
 
 [dependency-groups]
 dev = [
@@ -20,6 +24,10 @@ dev = [
   "ruff",
   "mypy",
   "pyright"
+]
+
+test = [
+  "pytest"
 ]
 
 [tool.setuptools.packages.find]

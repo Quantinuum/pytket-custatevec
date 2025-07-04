@@ -1,6 +1,5 @@
-from pytket.extensions.custatevec.wrapper.cupy import cudaDataType
-
-import numpy as np
+import numpy as np  # noqa: EXE002, D100
+from cuquantum import cudaDataType
 from numpy.typing import DTypeLike
 
 _cuquantum_to_np_dtype_map = {
@@ -12,7 +11,18 @@ _cuquantum_to_np_dtype_map = {
 }
 
 def cuquantum_to_np_dtype(cuquantum_dtype : cudaDataType) -> DTypeLike:
+    """Convert a cuQuantum CUDA data type to the corresponding NumPy data type.
+
+    Args:
+        cuquantum_dtype (cudaDataType): The cuQuantum CUDA data type.
+
+    Returns:
+        DTypeLike: The corresponding NumPy data type.
+
+    Raises:
+        NotImplementedError: If the provided CUDA data type is not supported.
+    """
     try:
         return _cuquantum_to_np_dtype_map[cuquantum_dtype]
-    except:
-        raise NotImplementedError(f"Cuda dtype {cudaDataType(cuquantum_dtype).name} not implemented in dtype.py; open an issue on GitHub.")
+    except:  # noqa: E722
+        raise NotImplementedError(f"Cuda dtype {cudaDataType(cuquantum_dtype).name} not implemented in dtype.py; open an issue on GitHub.")  # noqa: B904, E501, EM102, RUF100, W292

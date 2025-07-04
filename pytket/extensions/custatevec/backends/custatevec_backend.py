@@ -15,36 +15,39 @@
 """Methods to allow tket circuits to be run on the cuStateVec simulator."""
 
 from abc import abstractmethod
-
-from typing import List, Union, Optional, Sequence
+from typing import List, Optional, Sequence, Union
 from uuid import uuid4
+
+from cuquantum import cudaDataType
+
 from pytket._tket.circuit import Circuit, OpType
-from pytket.backends.resulthandle import ResultHandle
-from pytket.backends.backend_exceptions import CircuitNotRunError
-from pytket.backends.status import CircuitStatus, StatusEnum
-from pytket.utils.results import KwargTypes
 from pytket.backends.backend import Backend
-from pytket.backends.backendresult import BackendResult
+from pytket.backends.backend_exceptions import CircuitNotRunError
 from pytket.backends.backendinfo import BackendInfo
-from pytket.backends.resulthandle import _ResultIdTuple
-from pytket.predicates import (  # type: ignore
-    Predicate,
-    NoSymbolsPredicate,
-    NoClassicalControlPredicate,
-    NoMidMeasurePredicate,
-    NoBarriersPredicate,
-)
+from pytket.backends.backendresult import BackendResult
+from pytket.backends.resulthandle import ResultHandle, _ResultIdTuple
+from pytket.backends.status import CircuitStatus, StatusEnum
+from pytket.extensions.custatevec.custatevec import initial_statevector, run_circuit
+from pytket.extensions.custatevec.handle import CuStateVecHandle
 from pytket.passes import (  # type: ignore
     BasePass,
-    SequencePass,
-    DecomposeBoxes, # type: ignore
+    CustomPass,  # type: ignore
+    DecomposeBoxes,  # type: ignore
+    FullPeepholeOptimise,  # type: ignore
     RemoveRedundancies,
+    SequencePass,
     SynthesiseTket,
-    FullPeepholeOptimise, # type: ignore
-    CustomPass, # type: ignore
 )
+from pytket.predicates import (  # type: ignore
+    NoBarriersPredicate,
+    NoClassicalControlPredicate,
+    NoMidMeasurePredicate,
+    NoSymbolsPredicate,
+    Predicate,
+)
+from pytket.utils.results import KwargTypes
 
-from .._metadata import __extension_version__, __extension_name__
+from .._metadata import __extension_name__, __extension_version__
 
 
 class _CuStateVecBaseBackend(Backend):
@@ -203,8 +206,18 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         Returns:
             Results handle objects.
         """
-        # TODO
-        return []
+        handle_list = []
+        for circuit in circuits:
+            with CuStateVecHandle() as libhandle:
+                sv = initial_statevector(
+                    libhandle,  circuit.n_qubits, "zero", dtype=cudaDataType.CUDA_C_64F
+                )
+                run_circuit(libhandle, circuit, sv)
+            res_qubits = [qb for qb in sorted(circuit.qubits)]  # noqa: C416
+            handle = ResultHandle(str(uuid4()))
+            self._cache[handle] = {"result": BackendResult(q_bits=res_qubits, state=sv)}
+            handle_list.append(handle)
+        return handle_list
 
 
 class CuStateVecShotsBackend(_CuStateVecBaseBackend):
