@@ -53,7 +53,7 @@ class UnparameterizedGate(Gate):
         self.name = name
         self._matrix = matrix
 
-    def get(self, *parameters: float, dtype: DTypeLike) -> NDArray[Any]:
+    def get(self, parameters: float, dtype: DTypeLike) -> NDArray[Any]:
         if len(parameters) > 0:
             raise ValueError(f"Passed {len(parameters)} to an unparmeterised gate")
         return self._matrix.astype(dtype)
@@ -102,7 +102,7 @@ class ParameterizedGate(Gate):
 class CuStateVecMatrix:
     matrix: cp.ndarray
     cuda_dtype: cudaDataType
-    qubits: int
+    n_qubits: int
 
     def __init__(self, matrix: cp.ndarray, cuda_dtype: cudaDataType):
         self.matrix = matrix
@@ -116,4 +116,4 @@ class CuStateVecMatrix:
             raise ValueError(
                 "Matrix passed to UnparameterizedGate does not have shape (2**q, 2**q)"
             )
-        self.qubits = q
+        self.n_qubits = q

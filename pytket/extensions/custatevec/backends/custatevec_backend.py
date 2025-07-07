@@ -211,7 +211,7 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
             print(circuit.get_commands())
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
-                    libhandle,  circuit.n_qubits, "zero", dtype=cudaDataType.CUDA_C_64F
+                    libhandle,  circuit.n_qubits, "zero", dtype=cudaDataType.CUDA_C_64F,
                 )
                 run_circuit(libhandle, circuit, sv)
             res_qubits = [qb for qb in sorted(circuit.qubits)]  # noqa: C416

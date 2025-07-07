@@ -11,6 +11,7 @@ class CuStateVector:
     array: cp.ndarray
     cuda_dtype: cudaDataType
     n_qubits: int
+    shape: tuple[int, ...]
 
     def __init__(self, array: cp.ndarray, cuda_dtype: cudaDataType) -> None:
         self.array = array
@@ -19,6 +20,7 @@ class CuStateVector:
             raise ValueError()
         self.n_qubits = int(_n_qubits)
         self.cuda_dtype = cuda_dtype
+        self.shape = array.shape
 
     def apply_phase(self, phase : float) -> None:
         self.array *= phase

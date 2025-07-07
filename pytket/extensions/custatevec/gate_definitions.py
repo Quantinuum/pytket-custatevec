@@ -258,13 +258,13 @@ def get_uncontrolled_gate(name: str) -> tuple[str, int]:
 
 
 def get_gate_matrix(
-    gate_name: str, parameters: Sequence[float], cuda_dtype: cudaDataType
+    gate_name: str, parameters: Sequence[float], cuda_dtype: cudaDataType,
 ) -> CuStateVecMatrix:
     dtype = cuquantum_to_np_dtype(cuda_dtype)
     try:
         gate = gate_dict[gate_name]
         return CuStateVecMatrix(
-            cp.array(gate.get(parameters, dtype), dtype=dtype), cuda_dtype
+            cp.array(gate.get(parameters, dtype), dtype=dtype), cuda_dtype,
         )
     except KeyError:
         raise ValueError(f"Gate {gate_name} not found")
