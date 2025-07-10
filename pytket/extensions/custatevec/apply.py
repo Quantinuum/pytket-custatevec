@@ -83,7 +83,12 @@ def pytket_paulis_to_custatevec_paulis(pauli_rotation_type: OpType, angle_pi: fl
         raise ValueError(f"Unsupported OpType: {pauli_rotation_type}")
     
     paulis = _pytket_pauli_to_custatevec_pauli_map[pauli_rotation_type]
-    angle_radians = angle_pi * np.pi  # Convert from multiples of π to radians
+    # cuStateVec's apply_pauli_rotation applies exp(i*angle_radians* Pauli),
+    # where angle_radians is in radians. The input angle from pytket
+    # is in multiples of π, so we convert it to radians. Additionally,
+    # we apply a factor of 0.5 with a negative sign to render the
+    # Pauli rotation an actual rotation gate in the conventional definition
+    angle_radians = - angle_pi * 0.5 * np.pi
     return paulis, angle_radians
 
 

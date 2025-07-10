@@ -59,14 +59,16 @@ def test_four_qubit_superposition() -> None:
 def test_single_qubit_rotations() -> None:
     c = Circuit(1)
     c.Rx(0.5, 0)
-    # c.Ry(0.5, 0)
-    # c.Rz(0.5, 0)
+    c.Ry(0.5, 0)
+    c.Rz(0.5, 0)
     cu_backend = CuStateVecStateBackend()
     aer_backend = AerStateBackend()
     aer_handle = aer_backend.process_circuit(c)
     cu_handle = cu_backend.process_circuits([c])
     aer_result = aer_backend.get_result(aer_handle).get_state()
     cu_result = cu_backend.get_result(cu_handle[0]).get_state().array
+    print(aer_result)
+    print(cu_result)
     assert np.allclose(cu_result, aer_result)
 
 def test_three_qubit_mixed_gates() -> None:
