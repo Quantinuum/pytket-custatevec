@@ -18,22 +18,21 @@ from typing import Literal
 
 import cupy as cp  # type: ignore
 import cuquantum.custatevec as cusv  # type: ignore
+from cuquantum.bindings._utils import cudaDataType
+from cuquantum.bindings.custatevec import StateVectorType
+
+from pytket.circuit import Bit, Circuit, OpType, Qubit
+
 from .apply import (
     apply_matrix,
     apply_pauli_rotation,
     pytket_paulis_to_custatevec_paulis,
 )
-from cuquantum.bindings._utils import cudaDataType
-from cuquantum.bindings.custatevec import StateVectorType
-from .dtype import cuquantum_to_np_dtype
 from .gate_definitions import get_gate_matrix, get_uncontrolled_gate
 from .handle import CuStateVecHandle
 from .logger import set_logger
 from .statevector import CuStateVector
-from sympy import Expr
 from .utils import _remove_meas_and_implicit_swaps
-
-from pytket.circuit import Bit, Circuit, OpType, PauliExpBox, Qubit
 
 _initial_statevector_dict: dict[str, StateVectorType] = {
     "zero": StateVectorType.ZERO,
@@ -137,7 +136,10 @@ def run_circuit(
             if gate_name[-2:] == "dg":
                 adjoint = True
                 gate_name = gate_name[:-2]
-            matrix = get_gate_matrix(uncontrolled_gate, op.params, matrix_dtype)
+            uncontrolled_gate_name_without_parameter = uncontrolled_gate.split("(")[0]
+            matrix = get_gate_matrix(
+                uncontrolled_gate_name_without_parameter, op.params, matrix_dtype,
+            )
             apply_matrix(
                 handle=handle,
                 matrix=matrix,

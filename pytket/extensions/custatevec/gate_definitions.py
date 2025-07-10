@@ -1,9 +1,10 @@
 import warnings
-from typing import Sequence, Any
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
-from numpy.typing import DTypeLike, NDArray
 from cuquantum.bindings._utils import cudaDataType
+from numpy.typing import DTypeLike, NDArray
 
 try:
     import cupy as cp  # type: ignore
@@ -11,9 +12,9 @@ except ImportError:
     warnings.warn("local settings failed to import cupy", ImportWarning)
 
 from pytket.extensions.custatevec.gate_classes import (
+    CuStateVecMatrix,
     ParameterizedGate,
     UnparameterizedGate,
-    CuStateVecMatrix,
 )
 
 from .dtype import cuquantum_to_np_dtype
@@ -57,7 +58,7 @@ _SWAP = np.array(
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
         [0.0, 0.0, 0.0, 1.0],
-    ]
+    ],
 )
 
 SWAP = UnparameterizedGate("SWAP", _SWAP)
@@ -126,7 +127,7 @@ def _ISWAP(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, i_s, 0.0],
             [0.0, i_s, c, 0.0],
             [0.0, 0.0, 0.0, 1.0],
-        ]
+        ],
     )
 
 
@@ -143,7 +144,7 @@ def _PhasedISWAP(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, i_s * np.exp(2.0j * np.pi * params[0], dtype=dtype), 0.0],
             [0.0, i_s * np.exp(-2.0j * np.pi * params[0], dtype=dtype), c, 0.0],
             [0.0, 0.0, 0.0, 1.0],
-        ]
+        ],
     )
 
 
@@ -160,7 +161,7 @@ def _XXPhase(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, -i_s, 0.0],
             [0.0, -i_s, c, 0.0],
             [-i_s, 0.0, 0.0, c],
-        ]
+        ],
     ).reshape((2,) * 4)
 
 
@@ -177,7 +178,7 @@ def _YYPhase(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
             [0.0, c, -i_s, 0.0],
             [0.0, -i_s, c, 0.0],
             [i_s, 0.0, 0.0, c],
-        ]
+        ],
     )
 
 
@@ -251,6 +252,14 @@ _control_to_gate_map: dict[str, tuple[str, int]] = {
 
 
 def get_uncontrolled_gate(name: str) -> tuple[str, int]:
+    """Retrieve the corresponding uncontrolled gate name and control level.
+
+    Args:
+        name (str): The name of the controlled gate.
+
+    Returns:
+        tuple[str, int]: A tuple containing the uncontrolled gate name and the control level.
+    """
     try:
         return _control_to_gate_map[name]
     except KeyError:
@@ -260,6 +269,19 @@ def get_uncontrolled_gate(name: str) -> tuple[str, int]:
 def get_gate_matrix(
     gate_name: str, parameters: Sequence[float], cuda_dtype: cudaDataType,
 ) -> CuStateVecMatrix:
+    """Retrieve the matrix representation of a quantum gate.
+
+    Args:
+        gate_name (str): The name of the gate.
+        parameters (Sequence[float]): The parameters for the gate.
+        cuda_dtype (cudaDataType): The CUDA data type for the gate matrix.
+
+    Returns:
+        CuStateVecMatrix: The matrix representation of the gate in CuPy format.
+
+    Raises:
+        ValueError: If the gate name is not found in the gate dictionary.
+    """
     dtype = cuquantum_to_np_dtype(cuda_dtype)
     try:
         gate = gate_dict[gate_name]

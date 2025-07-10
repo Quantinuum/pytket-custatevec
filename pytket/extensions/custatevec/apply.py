@@ -1,17 +1,15 @@
-from typing import Sequence, Optional
+from collections.abc import Sequence
 
-import numpy as np
-
-from cuquantum import ComputeType
 import cuquantum.custatevec as cusv  # type: ignore
-
+import numpy as np
+from cuquantum import ComputeType
 from cuquantum.custatevec import Pauli as cusvPauli
 
-from .handle import CuStateVecHandle
-from .gate_classes import CuStateVecMatrix
-from .statevector import CuStateVector
-
 from pytket.circuit import OpType
+
+from .gate_classes import CuStateVecMatrix
+from .handle import CuStateVecHandle
+from .statevector import CuStateVector
 
 
 def apply_matrix(
@@ -19,8 +17,8 @@ def apply_matrix(
     matrix: CuStateVecMatrix,
     statevector: CuStateVector,
     targets: int | Sequence[int],
-    controls: Optional[Sequence[int] | int] = None,
-    control_bit_values: Optional[Sequence[int] | int] = None,
+    controls: Sequence[int] | int | None = None,
+    control_bit_values: Sequence[int] | int | None = None,
     adjoint: bool = False,
     compute_type: ComputeType = ComputeType.COMPUTE_DEFAULT,
     extra_workspace: int = 0,
@@ -81,13 +79,13 @@ def pytket_paulis_to_custatevec_paulis(pauli_rotation_type: OpType, angle_pi: fl
     }
     if pauli_rotation_type not in _pytket_pauli_to_custatevec_pauli_map:
         raise ValueError(f"Unsupported OpType: {pauli_rotation_type}")
-    
+
     paulis = _pytket_pauli_to_custatevec_pauli_map[pauli_rotation_type]
-    # cuStateVec's apply_pauli_rotation applies exp(i*angle_radians* Pauli),
+    # cuStateVec's apply_pauli_rotation applies exp(i*angle_radians*Pauli),
     # where angle_radians is in radians. The input angle from pytket
     # is in multiples of π, so we convert it to radians. Additionally,
     # we apply a factor of 0.5 with a negative sign to render the
-    # Pauli rotation an actual rotation gate in the conventional definition
+    # Pauli rotation an actual rotation gate in the conventional definition.
     angle_radians = - angle_pi * 0.5 * np.pi
     return paulis, angle_radians
 
@@ -98,8 +96,8 @@ def apply_pauli_rotation(
     statevector: CuStateVector,
     angle: float,
     targets: int | Sequence[int],
-    controls: Optional[Sequence[int] | int] = None,
-    control_bit_values: Optional[Sequence[int] | int] = None,
+    controls: Sequence[int] | int | None = None,
+    control_bit_values: Sequence[int] | int | None = None,
 ) -> None:
     targets = [targets] if targets is int else targets
     if controls is None:
