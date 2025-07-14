@@ -7,13 +7,13 @@ from pytket.extensions.custatevec.backends import CuStateVecStateBackend
 @pytest.mark.parametrize(
     "circuit_fixture",
     [
-        # "test_circuit",
-        # "bell_circuit",
-        # "three_qubit_ghz_circuit",
-        # "four_qubit_superposition_circuit",
-        # "single_qubit_clifford_circuit",
-        # "single_qubit_non_clifford_circuit",
-        # "two_qubit_entangling_circuit",
+        "test_circuit",
+        "bell_circuit",
+        "three_qubit_ghz_circuit",
+        "four_qubit_superposition_circuit",
+        "single_qubit_clifford_circuit",
+        "single_qubit_non_clifford_circuit",
+        "two_qubit_entangling_circuit",
         "global_phase_circuit",
     ],
 )
