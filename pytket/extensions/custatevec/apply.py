@@ -24,9 +24,56 @@ def apply_matrix(
     extra_workspace: int = 0,
     extra_workspace_size_in_bytes: int = 0,
 ) -> None:
+    """Apply a quantum gate matrix to a statevector using cuStateVec.
 
+    This function applies a matrix operation to the specified target qubits
+    in the given statevector. It supports optional control qubits and their
+    corresponding control bit values.
+
+    Args:
+        handle (CuStateVecHandle): The cuStateVec handle for managing the
+            cuStateVec library context.
+        matrix (CuStateVecMatrix): The matrix representing the quantum gate
+            to be applied. It should act only on the target qubits.
+        statevector (CuStateVector): The statevector to which the matrix
+            operation will be applied.
+        targets (int | Sequence[int]): The target qubit(s) on which the
+            matrix will act. It is assumed this list is provided
+            in MSB-to-LSB order, consistent with pytket's convention.
+        controls (Sequence[int] | int | None, optional): The control qubit(s)
+            for the operation. If None, no control qubits are used. Defaults
+            to None.
+        control_bit_values (Sequence[int] | int | None, optional): The control
+            bit values corresponding to the control qubits. If None, no
+            control bit values are used.
+            IMPORTANT: 1 means the gate is applied only when the control qubit is in state 1.
+        adjoint (bool, optional): Whether to apply the adjoint (conjugate
+            transpose) of the matrix. Defaults to False.
+        compute_type (ComputeType, optional): The compute precision type to
+            use. Defaults to ComputeType.COMPUTE_DEFAULT.
+        extra_workspace (int, optional): Additional workspace for the
+            operation. Defaults to 0.
+        extra_workspace_size_in_bytes (int, optional): Size of the extra
+            workspace in bytes. Defaults to 0.
+
+    Returns:
+        None: This function modifies the statevector in place.
+
+    Notes:
+        - The supplied initial statevector is generated with cuStateVec and therefore follows little-endian.
+        - cuStateVec expects the target qubits to be specified in little-endian
+          order. This function reverses the order of the targets to comply with
+          this requirement.
+        - The matrix should only act on the target qubits. cuStateVec internally
+          handles embedding the matrix into the full system based on the
+          specified target qubits.
+    """
     targets = [targets] if targets is int else targets
-    targets.reverse()  # cuStateVec expects targets in little-endian order
+    # IMPORTANT: Translate qubit order for cuStateVec.apply_matrix.
+    # After relabling with _qubit_idx_map, cuStateVec.apply_matrix function still
+    # requires its list of target indices to be in the LSB-to-MSB order.
+    # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
+    targets.reverse()
     if controls is None:
         controls = []
     else:
@@ -101,7 +148,11 @@ def apply_pauli_rotation(
     control_bit_values: Sequence[int] | int | None = None,
 ) -> None:
     targets = [targets] if targets is int else targets
-    targets.reverse()  # cuStateVec expects targets in little-endian order
+    # IMPORTANT: Translate qubit order for cuStateVec.apply_pauli_rotation.
+    # After relabling with _qubit_idx_map, cuStateVec.apply_pauli_rotation function still
+    # requires its list of target indices to be in the LSB-to-MSB order.
+    # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
+    targets.reverse()
     if controls is None:
         controls = []
     else:

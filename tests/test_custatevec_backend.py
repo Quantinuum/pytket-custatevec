@@ -1,12 +1,18 @@
 import numpy as np
-import cupy as cp
 import pytest
 
-from pytket.extensions.custatevec.backends import CuStateVecStateBackend
+from pytket.circuit import BasisOrder, Circuit
+from pytket.extensions.custatevec.backends import (
+    CuStateVecShotsBackend,
+    CuStateVecStateBackend,
+)
+from pytket.extensions.qiskit.backends.aer import AerStateBackend
+from pytket.extensions.qulacs.backends import QulacsBackend
+from pytket.utils import get_operator_expectation_value
 
 
 @pytest.mark.parametrize(
-    "circuit_fixture",
+    "statevector_circuit_fixture",
     [
         "test_circuit",
         "bell_circuit",
@@ -18,7 +24,9 @@ from pytket.extensions.custatevec.backends import CuStateVecStateBackend
         "global_phase_circuit",
     ],
 )
-def test_custatevec_vs_aer_and_qulacs(circuit_fixture: str, request: pytest.FixtureRequest) -> None:
+def test_custatevecstate_state_vector_vs_aer_and_qulacs(
+    statevector_circuit_fixture: str, request: pytest.FixtureRequest,
+) -> None:
     """Test the CuStateVecStateBackend against AerState and Qulacs Backends for various quantum circuits.
 
     Args:
@@ -29,7 +37,7 @@ def test_custatevec_vs_aer_and_qulacs(circuit_fixture: str, request: pytest.Fixt
         None
     Compares the resulting quantum states to ensure consistency.
     """
-    circuit_data = request.getfixturevalue(circuit_fixture)
+    circuit_data = request.getfixturevalue(statevector_circuit_fixture)
     if isinstance(circuit_data, tuple):
         circuit, expected = circuit_data
     else:
@@ -39,14 +47,11 @@ def test_custatevec_vs_aer_and_qulacs(circuit_fixture: str, request: pytest.Fixt
     cu_backend = CuStateVecStateBackend()
     cu_circuit = cu_backend.get_compiled_circuit(circuit)
     cu_handle = cu_backend.process_circuits([cu_circuit])
-    cu_result = cp.asnumpy(cu_backend.get_result(cu_handle[0]).get_state().array)
+    cu_result = cu_backend.get_result(cu_handle[0]).get_state()
 
     if expected is not None:
         assert np.allclose(cu_result, expected)
     else:
-        from pytket.extensions.qiskit.backends.aer import AerStateBackend
-        from pytket.extensions.qulacs.backends import QulacsBackend
-
         # Test against Qulacs Backend
         qulacs_backend = QulacsBackend()
         qulacs_circuit = qulacs_backend.get_compiled_circuit(circuit)
@@ -61,8 +66,163 @@ def test_custatevec_vs_aer_and_qulacs(circuit_fixture: str, request: pytest.Fixt
         aer_result = aer_backend.get_result(aer_handle).get_state()
         assert np.allclose(cu_result, aer_result)
 
-        # Test against pytket's built-in statevector comparison
-        assert np.allclose(cu_result, circuit.get_statevector())
+        # Test against pytket
+        pytket_result = circuit.get_statevector()
+        assert np.allclose(cu_result, pytket_result)
+
+
+@pytest.mark.parametrize(
+    "sampler_circuit_fixture, operator_fixture",
+    [
+        ("bell_circuit", "bell_operator"),
+        ("three_qubit_ghz_circuit", "ghz_operator"),
+        ("four_qubit_superposition_circuit", "superposition_operator"),
+        ("two_qubit_entangling_circuit", "entangling_operator"),
+    ],
+)
+def test_custatevecstate_expectation_value_vs_aer_and_qulacs(
+    sampler_circuit_fixture: str, operator_fixture: str, request: pytest.FixtureRequest,
+) -> None:
+    """Test the CuStateVecShotsBackend against AerState and Qulacs Backends for various quantum circuits.
+
+    Args:
+        sampler_circuit_fixture: The fixture name for the quantum circuit to test.
+        operator_fixture: The fixture name for the operator to test.
+        request: The pytest request object to access the fixtures.
+
+    Returns:
+        None
+    """
+    circuit_data = request.getfixturevalue(sampler_circuit_fixture)
+    if isinstance(circuit_data, tuple):
+        circuit = circuit_data[0]  # Extract the Circuit object
+    else:
+        circuit = circuit_data
+
+    operator = request.getfixturevalue(operator_fixture)
+
+    # CuStateVec expectation value
+    cu_backend = CuStateVecStateBackend()
+    cu_circuit = cu_backend.get_compiled_circuit(circuit)
+    cu_handle = cu_backend.run_circuit(cu_circuit)
+    state = cu_handle.get_state()
+    # Alternatively, use the get_operator_expectation_value function
+    cu_expectation = get_operator_expectation_value(circuit, operator, cu_backend)
+
+    # NOTE: The expectation values can be computed in general in two different ways
+    # 1. Using the operator.state_expectation method
+    # 2. Using pytket's default get_operator_expectation_value function with the non-compiled circuit
+    # or add circuit.replace_implicit_wire_swaps() in case one wants to use the compiled circuit.
+
+    # We defined a backend-specific get_operator_expectation_value method here 
+    # to take advantage of CuStateVec's functionalities.
+
+    assert np.allclose(operator.state_expectation(state), cu_expectation)
+
+    # Qulacs expectation value
+    qulacs_backend = QulacsBackend()
+    qulacs_circuit = qulacs_backend.get_compiled_circuit(circuit)
+    qulacs_handle = qulacs_backend.process_circuit(qulacs_circuit)
+    qulacs_state = qulacs_backend.get_result(qulacs_handle).get_state()
+    assert np.allclose(operator.state_expectation(qulacs_state), cu_expectation)
+
+    # AerState expectation value
+    aer_backend = AerStateBackend()
+    aer_circuit = aer_backend.get_compiled_circuit(circuit)
+    aer_handle = aer_backend.process_circuit(aer_circuit)
+    aer_state = aer_backend.get_result(aer_handle).get_state()
+    assert np.allclose(operator.state_expectation(aer_state), cu_expectation)
+
+def test_basisorder() -> None:
+    """Test the basis order of the CuStateVecShotsBackend."""
+    from pytket.circuit import BasisOrder, Circuit
+    c = Circuit(2)
+    c.X(1)
+
+    cu_backend = CuStateVecStateBackend()
+    c = cu_backend.get_compiled_circuit(c)
+    cu_handle = cu_backend.process_circuits([c])
+    cu_result = cu_backend.get_result(cu_handle[0])
+    assert np.allclose(cu_result.get_state(), np.asarray([0, 1, 0, 0]))
+    assert np.allclose(cu_result.get_state(basis=BasisOrder.dlo), np.asarray([0, 0, 1, 0]))
+
+
+def test_implicit_perm() -> None:
+    """Test the implicit qubit permutation in CuStateVecStateBackend."""
+    from pytket.passes import CliffordSimp
+    c = Circuit(2)
+    c.CX(0, 1)
+    c.CX(1, 0)
+    c.Ry(0.1, 1)
+    c1 = c.copy()
+    CliffordSimp().apply(c1)
+    b = CuStateVecStateBackend()
+    c = b.get_compiled_circuit(c, optimisation_level=1)
+    c1 = b.get_compiled_circuit(c1, optimisation_level=1)
+    assert c.implicit_qubit_permutation() != c1.implicit_qubit_permutation()
+    h, h1 = b.process_circuits([c, c1])
+    r, r1 = b.get_results([h, h1])
+    for bo in [BasisOrder.ilo, BasisOrder.dlo]:
+        s = r.get_state(basis=bo)
+        s1 = r1.get_state(basis=bo)
+        assert np.allclose(s, s1)
+
+
+@pytest.mark.parametrize(
+    "sampler_circuit_fixture, operator_fixture",
+    [
+        # ("bell_circuit", "bell_operator"),
+        # ("three_qubit_ghz_circuit", "ghz_operator"),
+        # ("four_qubit_superposition_circuit", "superposition_operator"),
+        ("two_qubit_entangling_circuit", "entangling_operator"),
+    ],
+)
+def test_custatevecshots_vs_aer_and_qulacs(
+    sampler_circuit_fixture: str, operator_fixture: str, request: pytest.FixtureRequest,
+) -> None:
+    """Test the CuStateVecShotsBackend against AerState and Qulacs Backends for various quantum circuits.
+
+    Args:
+        sampler_circuit_fixture: The fixture name for the quantum circuit to test.
+        operator_fixture: The fixture name for the operator to test.
+        request: The pytest request object to access the fixtures.
+
+    Returns:
+        None
+    """
+    circuit_data = request.getfixturevalue(sampler_circuit_fixture)
+    if isinstance(circuit_data, tuple):
+        circuit = circuit_data[0]  # Extract the Circuit object
+    else:
+        circuit = circuit_data
+
+    operator = request.getfixturevalue(operator_fixture)
+
+    # CuStateVec expectation value
+    cu_backend = CuStateVecShotsBackend()
+    n_shots = 100000
+    cu_circuit = cu_backend.get_compiled_circuit(circuit)
+    cu_expectation = get_operator_expectation_value(
+        cu_circuit, operator, cu_backend, n_shots,
+    )
+
+    # Qulacs expectation value
+    qulacs_backend = QulacsBackend()
+    qulacs_circuit = qulacs_backend.get_compiled_circuit(circuit)
+    qulacs_expectation = get_operator_expectation_value(
+        qulacs_circuit, operator, qulacs_backend,
+    )
+    print(f"CuStateVec Expectation: {cu_expectation}")
+    print(f"Qulacs Expectation: {qulacs_expectation}")
+    assert np.isclose(cu_expectation, qulacs_expectation, atol=0.01)
+
+    # AerState expectation value
+    aer_backend = AerStateBackend()
+    aer_circuit = aer_backend.get_compiled_circuit(circuit)
+    aer_expectation = get_operator_expectation_value(aer_circuit, operator, aer_backend)
+
+    assert np.isclose(cu_expectation, aer_expectation, atol=0.01)
+
 
 def test_initial_statevector():
     """Test the initial_statevector function for all possible types and different qubit numbers and compare against the expected state vector."""
@@ -71,15 +231,14 @@ def test_initial_statevector():
     from pytket.extensions.custatevec.custatevec import initial_statevector
     from pytket.extensions.custatevec.handle import CuStateVecHandle
 
-
     initial_states = {
-        "zero":    lambda n: np.eye(1, 2**n, 0, dtype=np.complex128).ravel(),
+        "zero": lambda n: np.eye(1, 2**n, 0, dtype=np.complex128).ravel(),
         "uniform": lambda n: np.full(2**n, 1 / np.sqrt(2**n), dtype=np.complex128),
-        "ghz":     lambda n: np.array(
+        "ghz": lambda n: np.array(
             [1 / np.sqrt(2) if i in [0, 2**n - 1] else 0 for i in range(2**n)],
             dtype=np.complex128,
         ),
-        "w":       lambda n: np.array(
+        "w": lambda n: np.array(
             [1 / np.sqrt(n) if (i).bit_count() == 1 else 0 for i in range(2**n)],
             dtype=np.complex128,
         ),
@@ -91,10 +250,13 @@ def test_initial_statevector():
         for n in qubit_numbers:
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
-                    libhandle, n, state_name, dtype=cudaDataType.CUDA_C_64F,
+                    libhandle,
+                    n,
+                    state_name,
+                    dtype=cudaDataType.CUDA_C_64F,
                 )
                 generated_state = sv.array
                 expected_state = state_func(n)
-                assert np.allclose(generated_state, expected_state), f"Mismatch for {state_name} with {n} qubits"
-
-
+                assert np.allclose(
+                    generated_state, expected_state,
+                ), f"Mismatch for {state_name} with {n} qubits"

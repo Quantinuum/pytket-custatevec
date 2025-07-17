@@ -11,23 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations  # type: ignore
+from __future__ import annotations
 
 import logging
 from typing import Literal
 
-import cupy as cp  # type: ignore
-import cuquantum.custatevec as cusv  # type: ignore
+import cupy as cp
+import cuquantum.custatevec as cusv
+import numpy as np
+from cuquantum import ComputeType
 from cuquantum.bindings._utils import cudaDataType
 from cuquantum.bindings.custatevec import StateVectorType
 
 from pytket.circuit import Bit, Circuit, OpType, Qubit
+from pytket.extensions.custatevec.gate_classes import CuStateVecMatrix
+from pytket.utils.operators import QubitPauliOperator
 
 from .apply import (
     apply_matrix,
     apply_pauli_rotation,
     pytket_paulis_to_custatevec_paulis,
 )
+from .dtype import cuquantum_to_np_dtype
 from .gate_definitions import get_gate_matrix, get_uncontrolled_gate
 from .handle import CuStateVecHandle
 from .logger import set_logger
@@ -72,7 +77,7 @@ def run_circuit(
     matrix_dtype: cudaDataType | None = None,
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
-) -> dict[Qubit, Bit]:
+):
     state: CuStateVector
     if type(initial_state) is str:
         state = initial_statevector(
@@ -82,28 +87,32 @@ def run_circuit(
             dtype=cudaDataType.CUDA_C_64F,
         )
     else:
-        state = initial_state # IMPORTANT: User needs to follow little-endian convention of cuStateVec 
+        state = initial_state
     if matrix_dtype is None:
         matrix_dtype = cudaDataType.CUDA_C_64F
     _logger = set_logger("GeneralState", level=loglevel, file=logfile)
-
-    # Remove end-of-circuit measurements and keep track of them separately
-    # It also resolves implicit SWAPs
-    _measurements: dict[Qubit, Bit]
-    circuit, _measurements = _remove_meas_and_implicit_swaps(circuit)
-
-    # Identify each qubit with an index
-    # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
-    # (qubit 0 = least significant) vs pytket's big-endian (qubit 0 = most significant).
-    _qubit_idx_map: dict[Qubit, int] = {
-        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
-    }
 
     _phase = circuit.phase
     if type(_phase) is float:
         state.apply_phase(_phase)
     else:
         raise NotImplementedError("Symbols not yet supported.")  # noqa: EM101
+
+    # Identify each qubit with an index
+    # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
+    # (qubit 0 = least significant) vs pytket's big-endian (qubit 0 = most significant).
+    # Now all operations by the cuStateVec library will be in the correct order.
+    # Reordering needs to be done inside the function since get_operator_expectation_value
+    # just calls the run_circuit function directly.
+    _qubit_idx_map: dict[Qubit, int] = {
+        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
+    }
+    # Remove end-of-circuit measurements and keep track of them separately
+    # It also resolves implicit SWAPs
+    _measurements: dict[Qubit, Bit]
+    circuit, _measurements = _remove_meas_and_implicit_swaps(
+        circuit,
+    )
 
     # Apply all gates to the initial state
     commands = circuit.get_commands()
@@ -144,9 +153,71 @@ def run_circuit(
                 statevector=state,
                 targets=targets,
                 controls=controls,
-                control_bit_values=[1] * n_controls,
+                control_bit_values=[1] * n_controls, # 1 means the gate is applied only when the control qubit is in state 1
                 adjoint=adjoint,
             )
     handle.stream.synchronize()
 
-    return _measurements
+    # return _measurements
+
+def compute_expectation(  # noqa: PLR0913
+    handle: CuStateVecHandle,
+    statevector: CuStateVector,
+    operator: QubitPauliOperator,
+    matrix_dtype: cudaDataType | None = None,
+    loglevel: int = logging.WARNING,
+    logfile: str | None = None,
+) -> np.float64:
+    """Compute the expectation value of a QubitPauliOperator on a CuStateVector.
+
+    Args:
+        handle (CuStateVecHandle): cuStateVec handle.
+        statevector (CuStateVector): The state vector on which to compute the exp. val.
+        operator (QubitPauliOperator): The operator for which to compute the exp. val.
+        matrix_dtype (cudaDataType, optional): The CUDA data type for operator matrix.
+            Defaults to None, which uses CUDA_C_64F.
+        loglevel (int, optional): Logging level. Defaults to logging.WARNING.
+        logfile (str, optional): Log file path. Defaults to None, which uses console.
+
+    Returns:
+        np.complex128: The expectation value of the operator on the state vector.
+    """
+    if not isinstance(operator, QubitPauliOperator):
+        raise TypeError("operator must be a QubitPauliOperator") # noqa: EM101, TRY003
+    if not isinstance(statevector, CuStateVector):
+        raise TypeError("statevector must be a CuStateVector")  # noqa: EM101, TRY003
+
+    if matrix_dtype is None:
+        matrix_dtype = cudaDataType.CUDA_C_64F
+    _logger = set_logger("GeneralState", level=loglevel, file=logfile)
+
+    # Convert the operator to a sparse matrix and create a CuStateVecMatrix
+    dtype = cuquantum_to_np_dtype(matrix_dtype)
+    matrix_array = operator.to_sparse_matrix().toarray()
+    matrix = CuStateVecMatrix(
+            cp.array(matrix_array, dtype=dtype), matrix_dtype,
+        )
+    # Match cuStateVec's little-endian convention: Sort basis bits in LSB-to-MSB order
+    basis_bits = sorted([i.index[0] for i in list(operator.all_qubits)])
+
+    expectation_value = np.empty(1, dtype=np.float64)
+
+    with handle.stream:
+        cusv.compute_expectation(
+            handle=handle.handle,
+            sv=statevector.array.data.ptr,
+            sv_data_type=statevector.cuda_dtype,
+            n_index_bits=statevector.n_qubits,
+            expectation_value=expectation_value.ctypes.data, # requires **host** pointer
+            expectation_data_type=cudaDataType.CUDA_R_64F,
+            matrix=matrix.matrix.data.ptr,
+            matrix_data_type=matrix.cuda_dtype,
+            layout=cusv.MatrixLayout.ROW,
+            basis_bits=basis_bits,
+            n_basis_bits=len(basis_bits),
+            compute_type=ComputeType.COMPUTE_DEFAULT,
+            extra_workspace=0,
+            extra_workspace_size_in_bytes=0,
+        )
+    handle.stream.synchronize()
+    return expectation_value[0]
