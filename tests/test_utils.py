@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from pytket.architecture import Architecture

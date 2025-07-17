@@ -1,7 +1,6 @@
 import math  # noqa: EXE002, D100
 
 import cupy as cp
-import numpy as np
 from cuquantum import cudaDataType
 
 from .gate_classes import *  # noqa: F403
@@ -47,4 +46,4 @@ class CuStateVector:
         Args:
             phase (float): The phase shift to apply, in units of pi.
         """
-        self.array *= np.exp(1j * np.pi * phase)
+        self.array *= cp.exp(1j * cp.pi * phase)
