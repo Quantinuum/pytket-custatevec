@@ -72,7 +72,7 @@ def run_circuit(
     matrix_dtype: cudaDataType | None = None,
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
-) -> dict[Qubit, Bit]:
+):
     state: CuStateVector
     if type(initial_state) is str:
         state = initial_statevector(
@@ -86,11 +86,6 @@ def run_circuit(
     if matrix_dtype is None:
         matrix_dtype = cudaDataType.CUDA_C_64F
     _logger = set_logger("GeneralState", level=loglevel, file=logfile)
-
-    # Remove end-of-circuit measurements and keep track of them separately
-    # It also resolves implicit SWAPs
-    _measurements: dict[Qubit, Bit]
-    circuit, _measurements = _remove_meas_and_implicit_swaps(circuit)
 
     # Identify each qubit with an index
     # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
@@ -149,4 +144,4 @@ def run_circuit(
             )
     handle.stream.synchronize()
 
-    return _measurements
+    # return _measurements

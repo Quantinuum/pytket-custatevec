@@ -47,4 +47,4 @@ class CuStateVector:
         Args:
             phase (float): The phase shift to apply, in units of pi.
         """
-        self.array *= np.exp(1j * np.pi * phase)
+        self.array *= cp.exp(1j * cp.pi * phase)

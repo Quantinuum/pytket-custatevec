@@ -15,9 +15,12 @@
 """Methods to allow tket circuits to be run on the cuStateVec simulator."""
 
 from abc import abstractmethod
-from typing import List, Optional, Sequence, Union
+from collections.abc import Sequence
 from uuid import uuid4
+from typing import List
 
+import cupy as cp
+import numpy as np
 from cuquantum import cudaDataType
 
 from pytket._tket.circuit import Circuit, OpType
@@ -45,9 +48,12 @@ from pytket.predicates import (  # type: ignore
     NoSymbolsPredicate,
     Predicate,
 )
+from pytket.utils.outcomearray import OutcomeArray
 from pytket.utils.results import KwargTypes
 
 from .._metadata import __extension_name__, __extension_version__
+from ..statevector import CuStateVector
+from ..utils import _remove_meas_and_implicit_swaps
 
 
 class _CuStateVecBaseBackend(Backend):
@@ -64,7 +70,7 @@ class _CuStateVecBaseBackend(Backend):
         return (str,)
 
     @property
-    def required_predicates(self) -> List[Predicate]:
+    def required_predicates(self) -> list[Predicate]:
         """Returns the minimum set of predicates that a circuit must satisfy.
 
         Predicates need to be satisfied before the circuit can be successfully run on
@@ -101,6 +107,7 @@ class _CuStateVecBaseBackend(Backend):
                 optimising. Level 1 additionally performs some light optimisations.
                 Level 2 adds more intensive optimisations that can increase compilation
                 time for large circuits. Defaults to 0.
+
         Returns:
             Compilation pass guaranteeing required predicates.
         """
@@ -136,10 +143,10 @@ class _CuStateVecBaseBackend(Backend):
     def process_circuits(
         self,
         circuits: Sequence[Circuit],
-        n_shots: Optional[Union[int, Sequence[int]]] = None,
+        n_shots: int | Sequence[int] | None = None,
         valid_check: bool = True,
         **kwargs: KwargTypes,
-    ) -> List[ResultHandle]:
+    ) -> list[ResultHandle]:
         """Submits circuits to the backend for running.
 
         The results will be stored in the backend's result cache to be retrieved by the
@@ -169,7 +176,7 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         super().__init__()
 
     @property
-    def backend_info(self) -> Optional[BackendInfo]:
+    def backend_info(self) -> BackendInfo | None:
         """Returns information on the backend."""
         return BackendInfo(
             name="CuStateVecStateBackend",
@@ -188,10 +195,10 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
     def process_circuits(
         self,
         circuits: Sequence[Circuit],
-        n_shots: Optional[Union[int, Sequence[int]]] = None,
+        n_shots: int | Sequence[int] | None = None,
         valid_check: bool = True,
         **kwargs: KwargTypes,
-    ) -> List[ResultHandle]:
+    ) -> list[ResultHandle]:
         """Submits circuits to the backend for running.
 
         The results will be stored in the backend's result cache to be retrieved by the
@@ -210,7 +217,16 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
-                    libhandle, circuit.n_qubits, "zero", dtype=cudaDataType.CUDA_C_64F,
+                    libhandle,
+                    circuit.n_qubits,
+                    "zero",
+                    dtype=cudaDataType.CUDA_C_64F,
+                )
+                # Remove end-of-circuit measurements and keep track of them separately
+                # It also resolves implicit SWAPs
+                _measurements: dict[Qubit, Bit]
+                circuit, _measurements = _remove_meas_and_implicit_swaps(
+                    circuit,
                 )
                 run_circuit(libhandle, circuit, sv)
             res_qubits = [qb for qb in sorted(circuit.qubits)]  # noqa: C416
@@ -231,7 +247,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         super().__init__()
 
     @property
-    def backend_info(self) -> Optional[BackendInfo]:
+    def backend_info(self) -> BackendInfo | None:
         """Returns information on the backend."""
         return BackendInfo(
             name="CuStateVecShotsBackend",
@@ -250,26 +266,141 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
     def process_circuits(
         self,
         circuits: Sequence[Circuit],
-        n_shots: Optional[Union[int, Sequence[int]]] = None,
+        n_shots: int | Sequence[int] | None = None,
         valid_check: bool = True,
         **kwargs: KwargTypes,
     ) -> List[ResultHandle]:
         """Submits circuits to the backend for running.
 
-        The results will be stored in the backend's result cache to be retrieved by the
-        corresponding get_<data> method.
+        The results will be stored in the backend's result cache.
 
         Args:
             circuits: List of circuits to be submitted.
             n_shots: Number of shots in case of shot-based calculation.
-                Optionally, this can be a list of shots specifying the number of shots
-                for each circuit separately.
-            valid_check: Whether to check for circuit correctness.
+                    Can also be a list of shots specifying per-circuit shots.
+            valid_check: Whether to check circuit correctness.
+
         Returns:
-            Results handle objects.
+            List of pytket ResultHandle objects.
         """
-        # TODO
-        return []
+        handle_list: List[ResultHandle] = []
+
+        # Normalize n_shots into a list for each circuit
+        if isinstance(n_shots, int) or n_shots is None:
+            n_shots_list = [n_shots] * len(circuits)
+        else:
+            n_shots_list = list(n_shots)
+
+        for circ_idx, circuit in enumerate(circuits):
+            # Save original classical bit list BEFORE removing measurements
+            original_bits = list(circuit.bits)
+
+            # Pick this circuit's shot count
+            shots_for_this = n_shots_list[circ_idx] or 1
+
+            with CuStateVecHandle() as libhandle:
+                # 1. Allocate |0...0> statevector on GPU
+                sv = initial_statevector(
+                    libhandle,
+                    circuit.n_qubits,
+                    "zero",
+                    dtype=cudaDataType.CUDA_C_64F,
+                )
+
+                # 2. Remove measurement ops → get clean circuit for simulation + qubit→bit mapping
+                circuit_no_meas, measurements = _remove_meas_and_implicit_swaps(circuit)
+
+                # 3. Simulate the stripped circuit → final statevector
+                run_circuit(libhandle, circuit_no_meas, sv)
+
+                # 4. Which qubits were measured?
+                measured_qubits = list(measurements.keys())
+
+                # 5. Sample bitstrings for measured qubits
+                qubit_shots = self.sample_circuit(
+                    circ=circuit,             # ✅ use ORIGINAL circuit for qubit ordering
+                    state=sv,
+                    qubits=measured_qubits,   # only the measured qubits
+                    n_shots=shots_for_this,
+                )  # shape (shots_for_this, len(measured_qubits))
+
+                # 6. Pad full shot table with zeros for all classical bits
+                all_shots = np.zeros((shots_for_this, len(original_bits)), dtype=int)
+
+                # 7. Fill each measured qubit’s sampled bits into the correct classical bit column
+                for i, q in enumerate(measured_qubits):
+                    bit = measurements[q]                   # classical Bit for this qubit
+                    col_idx = original_bits.index(bit)      # find its column index
+                    all_shots[:, col_idx] = qubit_shots[:, i]
+
+                # 8. Wrap into pytket BackendResult
+                res_bits   = original_bits
+                res_qubits = list(circuit.qubits)
+                handle     = ResultHandle(str(uuid4()))
+
+                self._cache[handle] = {
+                    "result": BackendResult(
+                        c_bits=res_bits,
+                        shots=OutcomeArray.from_readouts(all_shots),
+                    ),
+                }
+                handle_list.append(handle)
+
+        return handle_list
+
+    def sample_circuit(
+        self,
+        circ: Circuit,
+        state: CuStateVector,
+        qubits: Sequence[int],
+        n_shots: int = 1024,
+        seed: int | None = None,
+    ) -> np.ndarray:
+        """Samples a circuit and returns the results as a list of bitstrings."""
+        n_qubits = len(circ.qubits)
+
+        # Optional deterministic seeding
+        if seed is not None:
+            cp.random.seed(seed)
+        # Get probabilities |ψ|² and CDF
+        probs = cp.abs(state.array) ** 2
+        cdf = cp.cumsum(probs)
+        # Draw all random points in [0,1)
+        points = cp.random.rand(n_shots)
+        # Sample computational basis state indices (inverse transform sampling)
+        indices = cp.searchsorted(cdf, points)  # shape (n_shots,)
+
+        # Convert indices → bitstrings (vectorized GPU bit extraction)
+        bit_shifts = cp.arange(n_qubits, dtype=indices.dtype)  # [0,1,...,n_qubits-1]
+        bitmasks = (
+            indices[:, None] >> bit_shifts[None, :]
+        ) & 1  # shape (n_shots, n_qubits)
+        shots = bitmasks
+        # # Flip bits so MSB → LSB matches usual circuit ordering
+        # shots_gpu = bitmasks[:, ::-1]  # now shape (n_shots, n_qubits)
+
+        # Filter only the requested qubits (measured ones)
+        # Map circ.qubits → column indices
+        circ_qubit_indices = [circ.qubits.index(q) for q in qubits]
+        filtered_shots = shots[:, circ_qubit_indices]  # shape (n_shots, len(qubits))
+
+        # 7. Return as NumPy array on CPU
+        return cp.asnumpy(filtered_shots)
+
+    def get_qubits_and_bits(circuit):
+        measure_map = dict()
+        measured_units = (
+            set()
+        )  # Track measured Qubits/used Bits to identify mid-circuit measurement
+
+        for command in circuit:
+            optype = command.op.type
+            if optype == OpType.Measure:
+                measure_map[command.args[0]] = command.args[1]
+                measured_units.add(command.args[0])
+                measured_units.add(command.args[1])
+
+        return measure_map
 
 
 def _check_all_unitary_or_measurements(circuit: Circuit) -> bool:
