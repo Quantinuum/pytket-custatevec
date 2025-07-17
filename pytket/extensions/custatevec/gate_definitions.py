@@ -95,6 +95,16 @@ def _Rz(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
 
 Rz = ParameterizedGate("Rz", _Rz, 1, 1)
 
+def _TK1(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
+    return (
+        _Rz([params[0]], dtype=dtype)
+        @ _Rx([params[1]], dtype=dtype)
+        @ _Rz([params[2]], dtype=dtype)
+    )
+
+
+TK1 = ParameterizedGate("TK1", _TK1, 1, 3)
+
 def _U3(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     return (
         np.exp((params[1] + params[2]) * np.pi * 1.0j / 2, dtype=dtype)
@@ -221,6 +231,7 @@ gate_list = [
     Rx,
     Ry,
     Rz,
+    TK1,
     U1,
     U2,
     U3,

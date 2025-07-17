@@ -1,4 +1,5 @@
 import numpy as np
+import cupy as cp
 import pytest
 
 from pytket.extensions.custatevec.backends import CuStateVecStateBackend
@@ -36,8 +37,9 @@ def test_custatevec_vs_aer_and_qulacs(circuit_fixture: str, request: pytest.Fixt
         expected = None
 
     cu_backend = CuStateVecStateBackend()
-    cu_handle = cu_backend.process_circuits([circuit])
-    cu_result = cu_backend.get_result(cu_handle[0]).get_state().array
+    cu_circuit = cu_backend.get_compiled_circuit(circuit)
+    cu_handle = cu_backend.process_circuits([cu_circuit])
+    cu_result = cp.asnumpy(cu_backend.get_result(cu_handle[0]).get_state().array)
 
     if expected is not None:
         assert np.allclose(cu_result, expected)
@@ -54,11 +56,13 @@ def test_custatevec_vs_aer_and_qulacs(circuit_fixture: str, request: pytest.Fixt
 
         # Test against AerState Backend
         aer_backend = AerStateBackend()
-        circuit = aer_backend.get_compiled_circuit(circuit)
-        aer_handle = aer_backend.process_circuit(circuit)
+        aer_circuit = aer_backend.get_compiled_circuit(circuit)
+        aer_handle = aer_backend.process_circuit(aer_circuit)
         aer_result = aer_backend.get_result(aer_handle).get_state()
         assert np.allclose(cu_result, aer_result)
 
+        # Test against pytket's built-in statevector comparison
+        assert np.allclose(cu_result, circuit.get_statevector())
 
 def test_initial_statevector():
     """Test the initial_statevector function for all possible types and different qubit numbers and compare against the expected state vector."""

@@ -29,8 +29,7 @@ def test_circuit():
     c.X(2)
     c.H(0)
     c.CX(0, 1)
-    expected = [0, 0.70710678, 0, 0, 0, 0, 0, 0.70710678]
-    return c, expected
+    return c
 
 @pytest.fixture
 def three_qubit_ghz_circuit():
@@ -46,7 +45,7 @@ def four_qubit_superposition_circuit():
     c = Circuit(4)
     for i in range(4):
         c.H(i)
-    expected = np.ones(16) / 4  # Uniform superposition
+    expected = np.ones(16) / 4
     return c, expected
 
 # Group 2: Single-Qubit Non-Clifford or Parameterized Gates
