@@ -47,7 +47,7 @@ def test_custatevecstate_vs_aer_and_qulacs(
     cu_backend = CuStateVecStateBackend()
     cu_circuit = cu_backend.get_compiled_circuit(circuit)
     cu_handle = cu_backend.process_circuits([cu_circuit])
-    cu_result = cp.asnumpy(cu_backend.get_result(cu_handle[0]).get_state().array)
+    cu_result = cu_backend.get_result(cu_handle[0]).get_state()
 
     if expected is not None:
         assert np.allclose(cu_result, expected)
@@ -69,7 +69,7 @@ def test_custatevecstate_vs_aer_and_qulacs(
         # Test against pytket
         pytket_result = circuit.get_statevector()
         assert np.allclose(cu_result, pytket_result)
-
+        
 
 @pytest.mark.parametrize(
     "sampler_circuit_fixture, operator_fixture",
@@ -115,7 +115,8 @@ def test_custatevecshots_vs_aer_and_qulacs(
     qulacs_expectation = get_operator_expectation_value(
         qulacs_circuit, operator, qulacs_backend,
     )
-
+    print(f"CuStateVec Expectation: {cu_expectation}")
+    print(f"Qulacs Expectation: {qulacs_expectation}")
     assert np.isclose(cu_expectation, qulacs_expectation, atol=0.01)
 
     # AerState expectation value

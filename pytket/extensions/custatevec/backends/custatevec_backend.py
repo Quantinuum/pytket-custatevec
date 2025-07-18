@@ -222,16 +222,24 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
                     "zero",
                     dtype=cudaDataType.CUDA_C_64F,
                 )
+                # Identify each qubit with an index
+                # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
+                # (qubit 0 = least significant) vs pytket's big-endian (qubit 0 = most significant).
+                # Now all operations by the cuStateVec library will be in the correct order.
+                _qubit_idx_map: dict[Qubit, int] = {
+                    q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
+                }
                 # Remove end-of-circuit measurements and keep track of them separately
                 # It also resolves implicit SWAPs
                 _measurements: dict[Qubit, Bit]
                 circuit, _measurements = _remove_meas_and_implicit_swaps(
                     circuit,
                 )
-                run_circuit(libhandle, circuit, sv)
-            res_qubits = [qb for qb in sorted(circuit.qubits)]  # noqa: C416
+                run_circuit(libhandle, circuit, sv, _qubit_idx_map)
             handle = ResultHandle(str(uuid4()))
-            self._cache[handle] = {"result": BackendResult(q_bits=res_qubits, state=sv)}
+            # In order to be able to use the BackendResult functionality,
+            # we only pass the array of the statevector to BackendResult
+            self._cache[handle] = {"result": BackendResult(state=cp.asnumpy(sv.array))}
             handle_list.append(handle)
         return handle_list
 
@@ -264,25 +272,13 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         )
 
     def process_circuits(
-        self,
-        circuits: Sequence[Circuit],
-        n_shots: int | Sequence[int] | None = None,
-        valid_check: bool = True,
-        **kwargs: KwargTypes,
-    ) -> List[ResultHandle]:
-        """Submits circuits to the backend for running.
-
-        The results will be stored in the backend's result cache.
-
-        Args:
-            circuits: List of circuits to be submitted.
-            n_shots: Number of shots in case of shot-based calculation.
-                    Can also be a list of shots specifying per-circuit shots.
-            valid_check: Whether to check circuit correctness.
-
-        Returns:
-            List of pytket ResultHandle objects.
-        """
+    self,
+    circuits: Sequence[Circuit],
+    n_shots: int | Sequence[int] | None = None,
+    valid_check: bool = True,
+    **kwargs: KwargTypes,
+) -> List[ResultHandle]:
+        """Submits circuits to the backend for running and stores sampled shots & reordered statevector."""
         handle_list: List[ResultHandle] = []
 
         # Normalize n_shots into a list for each circuit
@@ -294,8 +290,6 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         for circ_idx, circuit in enumerate(circuits):
             # Save original classical bit list BEFORE removing measurements
             original_bits = list(circuit.bits)
-
-            # Pick this circuit's shot count
             shots_for_this = n_shots_list[circ_idx] or 1
 
             with CuStateVecHandle() as libhandle:
@@ -307,20 +301,20 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     dtype=cudaDataType.CUDA_C_64F,
                 )
 
-                # 2. Remove measurement ops → get clean circuit for simulation + qubit→bit mapping
+                # 2. Remove end-of-circuit measurements
                 circuit_no_meas, measurements = _remove_meas_and_implicit_swaps(circuit)
 
-                # 3. Simulate the stripped circuit → final statevector
+                # 3. Simulate stripped circuit
                 run_circuit(libhandle, circuit_no_meas, sv)
 
                 # 4. Which qubits were measured?
                 measured_qubits = list(measurements.keys())
 
-                # 5. Sample bitstrings for measured qubits
+                # 5. Sample bitstrings for measured qubits using correct backend→pytket mapping
                 qubit_shots = self.sample_circuit(
-                    circ=circuit,             # ✅ use ORIGINAL circuit for qubit ordering
+                    circ=circuit,             # ORIGINAL circuit for qubit ordering
                     state=sv,
-                    qubits=measured_qubits,   # only the measured qubits
+                    qubits=measured_qubits,   # only measured qubits
                     n_shots=shots_for_this,
                 )  # shape (shots_for_this, len(measured_qubits))
 
@@ -329,11 +323,15 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
 
                 # 7. Fill each measured qubit’s sampled bits into the correct classical bit column
                 for i, q in enumerate(measured_qubits):
-                    bit = measurements[q]                   # classical Bit for this qubit
-                    col_idx = original_bits.index(bit)      # find its column index
+                    bit = measurements[q]              # classical Bit for this qubit
+                    col_idx = original_bits.index(bit) # its column position
                     all_shots[:, col_idx] = qubit_shots[:, i]
 
-                # 8. Wrap into pytket BackendResult
+                # 8. Fix statevector ordering for pytket (LSB → MSB)
+                raw_sv = cp.asnumpy(sv.array)
+                fixed_sv = _reorder_state_for_pytket(raw_sv, circuit.n_qubits)
+
+                # 9. Cache result
                 res_bits   = original_bits
                 res_qubits = list(circuit.qubits)
                 handle     = ResultHandle(str(uuid4()))
@@ -342,6 +340,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     "result": BackendResult(
                         c_bits=res_bits,
                         shots=OutcomeArray.from_readouts(all_shots),
+                        state=fixed_sv
                     ),
                 }
                 handle_list.append(handle)
@@ -356,36 +355,50 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         n_shots: int = 1024,
         seed: int | None = None,
     ) -> np.ndarray:
-        """Samples a circuit and returns the results as a list of bitstrings."""
+        """Sample bitstrings from the given statevector using inverse transform sampling.
+
+        Args:
+            circ: pytket Circuit to determine qubit order.
+            state: cuStateVec statevector.
+            qubits: Only these qubits will be included in output shots.
+            n_shots: Number of samples.
+            seed: Optional RNG seed for reproducibility.
+
+        Returns:
+            NumPy array of shape (n_shots, len(qubits)) with sampled bits in pytket logical order.
+        """
         n_qubits = len(circ.qubits)
 
         # Optional deterministic seeding
         if seed is not None:
             cp.random.seed(seed)
-        # Get probabilities |ψ|² and CDF
+
+        # 1. Compute probabilities and CDF
         probs = cp.abs(state.array) ** 2
         cdf = cp.cumsum(probs)
-        # Draw all random points in [0,1)
+
+        # 2. Draw random points in [0,1)
         points = cp.random.rand(n_shots)
-        # Sample computational basis state indices (inverse transform sampling)
+
+        # 3. Sample computational basis indices (inverse transform sampling)
         indices = cp.searchsorted(cdf, points)  # shape (n_shots,)
 
-        # Convert indices → bitstrings (vectorized GPU bit extraction)
-        bit_shifts = cp.arange(n_qubits, dtype=indices.dtype)  # [0,1,...,n_qubits-1]
-        bitmasks = (
-            indices[:, None] >> bit_shifts[None, :]
-        ) & 1  # shape (n_shots, n_qubits)
-        shots = bitmasks
-        # # Flip bits so MSB → LSB matches usual circuit ordering
-        # shots_gpu = bitmasks[:, ::-1]  # now shape (n_shots, n_qubits)
+        # 4. Convert indices → backend bitstrings (LSB-first: bit0=q0)
+        bit_shifts = cp.arange(n_qubits, dtype=indices.dtype)
+        backend_bitmasks = (indices[:, None] >> bit_shifts[None, :]) & 1  # shape (shots, n_qubits)
 
-        # Filter only the requested qubits (measured ones)
-        # Map circ.qubits → column indices
-        circ_qubit_indices = [circ.qubits.index(q) for q in qubits]
-        filtered_shots = shots[:, circ_qubit_indices]  # shape (n_shots, len(qubits))
+        # 5. Map backend bit positions -> pytket logical qubits
+        # cuStateVec LSB-first -> pytket MSB-first: reversed qubit order
+        backend_order = list(reversed(circ.qubits))  # MSB-first
+        backend_indices = [backend_order.index(q) for q in qubits]
 
-        # 7. Return as NumPy array on CPU
+        # 6. Pick only measured qubits in pytket logical order
+        filtered_shots = backend_bitmasks[:, backend_indices]
+
+        # 7. Return as NumPy array
         return cp.asnumpy(filtered_shots)
+
+
 
     def get_qubits_and_bits(circuit):
         measure_map = dict()
@@ -412,3 +425,10 @@ def _check_all_unitary_or_measurements(circuit: Circuit) -> bool:
         return True
     except:
         return False
+
+def _reorder_state_for_pytket(state: np.ndarray, n_qubits: int) -> np.ndarray:
+    """Convert cuStateVec LSB-first statevector to pytket's MSB-first convention."""
+    reshaped = state.reshape([2] * n_qubits)
+    # reverse axes: [n-1, ..., 1, 0]
+    reordered = np.transpose(reshaped, axes=list(range(n_qubits - 1, -1, -1)))
+    return reordered.flatten()

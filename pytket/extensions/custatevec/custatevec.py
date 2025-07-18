@@ -69,6 +69,7 @@ def run_circuit(
     handle: CuStateVecHandle,
     circuit: Circuit,
     initial_state: CuStateVector | str = "zero",
+    _qubit_idx_map: dict[Qubit | Bit, int] | None = None,
     matrix_dtype: cudaDataType | None = None,
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
@@ -82,17 +83,10 @@ def run_circuit(
             dtype=cudaDataType.CUDA_C_64F,
         )
     else:
-        state = initial_state # IMPORTANT: User needs to follow little-endian convention of cuStateVec 
+        state = initial_state
     if matrix_dtype is None:
         matrix_dtype = cudaDataType.CUDA_C_64F
     _logger = set_logger("GeneralState", level=loglevel, file=logfile)
-
-    # Identify each qubit with an index
-    # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
-    # (qubit 0 = least significant) vs pytket's big-endian (qubit 0 = most significant).
-    _qubit_idx_map: dict[Qubit, int] = {
-        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
-    }
 
     _phase = circuit.phase
     if type(_phase) is float:
@@ -139,7 +133,7 @@ def run_circuit(
                 statevector=state,
                 targets=targets,
                 controls=controls,
-                control_bit_values=[1] * n_controls,
+                control_bit_values=[1] * n_controls, # 1 means the gate is applied only when the control qubit is in state 1
                 adjoint=adjoint,
             )
     handle.stream.synchronize()
