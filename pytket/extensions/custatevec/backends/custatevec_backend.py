@@ -175,6 +175,8 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
     """A pytket Backend using ``GeneralState`` to obtain state vectors."""
 
     _supports_state = True
+    _supports_expectation = True
+    _expectation_allows_nonhermitian = True
 
     def __init__(self) -> None:
         """Constructs a new cuStateVec backend object."""
@@ -218,7 +220,7 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         Returns:
             Results handle objects.
         """
-        # TODO Valid check
+        # TODO Valid check and compilation pass
         handle_list = []
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:
@@ -238,11 +240,18 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
 
     def get_operator_expectation_value(
         self,
-        statevector,
+        state_circuit,
         operator,
     ):
-        with CuStateVecHandle() as handle:
-            operator_expectation_value = compute_expectation(handle, statevector, operator)
+        with CuStateVecHandle() as libhandle:
+            sv = initial_statevector(
+                    libhandle,
+                    state_circuit.n_qubits,
+                    "zero",
+                    dtype=cudaDataType.CUDA_C_64F,
+                )
+            run_circuit(libhandle, state_circuit, sv)
+            operator_expectation_value = compute_expectation(libhandle, sv, operator)
 
         return operator_expectation_value
 

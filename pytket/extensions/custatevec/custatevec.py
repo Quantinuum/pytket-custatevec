@@ -20,8 +20,10 @@ import cupy as cp  # type: ignore
 import cuquantum.custatevec as cusv  # type: ignore
 from cuquantum.bindings._utils import cudaDataType
 from cuquantum.bindings.custatevec import StateVectorType
+from cuquantum import ComputeType
 
 from pytket.circuit import Bit, Circuit, OpType, Qubit
+from pytket.utils.operators import QubitPauliOperator
 
 from .apply import (
     apply_matrix,
@@ -156,21 +158,37 @@ def run_circuit(
     # return _measurements
 
 def compute_expectation(
-    handle,
+    handle: CuStateVecHandle,
     statevector: CuStateVector,
+    operator: QubitPauliOperator,
 ):
+    from .dtype import cuquantum_to_np_dtype
+    from pytket.extensions.custatevec.gate_classes import CuStateVecMatrix
+
+    matrix_dtype = cudaDataType.CUDA_C_64F
+    dtype = cuquantum_to_np_dtype(matrix_dtype)
+    matrix = operator.to_sparse_matrix().toarray()
+    matrix = CuStateVecMatrix(
+            cp.array(matrix, dtype=dtype), matrix_dtype,
+        )
+    basis_bits = [i.index[0] for i in list(operator.all_qubits)]
+    expectation_value = 0
     with handle.stream:
-                cusv.compute_expectation(
-                    handle=handle.handle,
-                    sv=statevector.array.data.ptr,
-                    sv_data_type=statevector.cuda_dtype,
-                    n_index_bits=statevector.n_qubits,
-                    matrix=matrix.matrix.data.ptr,
-                    matrix_data_type=matrix.cuda_dtype,
-                    layout=cusv.MatrixLayout.ROW,
-                    # basis_bits=,
-                    # n_basis_bits=
-                    compute_type=compute_type,
-                    extra_workspace=extra_workspace,
-                    extra_workspace_size_in_bytes=extra_workspace_size_in_bytes,
-                )
+        cusv.compute_expectation(
+            handle.handle,
+            statevector.array.data.ptr,
+            statevector.cuda_dtype,
+            statevector.n_qubits,
+            expectation_value,
+            matrix.cuda_dtype,
+            matrix.matrix.data.ptr,
+            matrix.cuda_dtype,
+            cusv.MatrixLayout.ROW,
+            basis_bits,
+            len(basis_bits),
+            ComputeType.COMPUTE_DEFAULT,
+            0,
+            0,
+        )
+    handle.stream.synchronize()
+    return expectation_value
