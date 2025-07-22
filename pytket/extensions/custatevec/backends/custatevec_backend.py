@@ -251,9 +251,8 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
                     dtype=cudaDataType.CUDA_C_64F,
                 )
             run_circuit(libhandle, state_circuit, sv)
-            operator_expectation_value = compute_expectation(libhandle, sv, operator)
-
-        return operator_expectation_value
+            expectation_value = compute_expectation(libhandle, sv, operator)
+        return expectation_value
 
 class CuStateVecShotsBackend(_CuStateVecBaseBackend):
     """A pytket Backend using ``GeneralState`` to obtain shots."""

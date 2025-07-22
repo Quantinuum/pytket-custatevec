@@ -74,10 +74,10 @@ def test_custatevecstate_state_vector_vs_aer_and_qulacs(
 @pytest.mark.parametrize(
     "sampler_circuit_fixture, operator_fixture",
     [
-        ("bell_circuit", "bell_operator"),
+        # ("bell_circuit", "bell_operator"),
         # ("three_qubit_ghz_circuit", "ghz_operator"),
         # ("four_qubit_superposition_circuit", "superposition_operator"),
-        # ("two_qubit_entangling_circuit", "entangling_operator"),
+        ("two_qubit_entangling_circuit", "entangling_operator"),
     ],
 )
 def test_custatevecstate_expectation_value_vs_aer_and_qulacs(
@@ -106,16 +106,18 @@ def test_custatevecstate_expectation_value_vs_aer_and_qulacs(
     cu_circuit = cu_backend.get_compiled_circuit(circuit)
     cu_handle = cu_backend.run_circuit(cu_circuit)
     state = cu_handle.get_state()
-    cu_expectation = operator.state_expectation(state)
-    cu_expectation = get_operator_expectation_value(cu_circuit, operator, cu_backend)
-    # NOTE: The expectation values can be computed in two different ways
-    # 1. Using the operator.state expectation method
-    # 2. Using the get_operator_expectation_value function + circuit.replace_implicit_wire_swaps()
-    # We choose the second method here for consistency.
-    # Since get_operator_expectation_value uses our internal 'run_circuit' method
-    # implicit swaps are already removed.
+    # Alternatively, use the get_operator_expectation_value function
+    cu_expectation = get_operator_expectation_value(circuit, operator, cu_backend)
 
-    assert np.allclose(cu_expectation, get_operator_expectation_value(cu_circuit, operator, cu_backend))
+    # NOTE: The expectation values can be computed in general in two different ways
+    # 1. Using the operator.state_expectation method
+    # 2. Using pytket's default get_operator_expectation_value function with the non-compiled circuit
+    # or add circuit.replace_implicit_wire_swaps() in case one wants to use the compiled circuit.
+
+    # We defined a backend-specific get_operator_expectation_value method here 
+    # to take advantage of CuStateVec's functionalities.
+
+    assert np.allclose(operator.state_expectation(state), cu_expectation)
 
     # Qulacs expectation value
     qulacs_backend = QulacsBackend()

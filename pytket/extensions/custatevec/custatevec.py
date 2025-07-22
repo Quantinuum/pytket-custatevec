@@ -15,6 +15,7 @@ from __future__ import annotations  # type: ignore
 
 import logging
 from typing import Literal
+import numpy as np
 
 import cupy as cp  # type: ignore
 import cuquantum.custatevec as cusv  # type: ignore
@@ -171,16 +172,17 @@ def compute_expectation(
     matrix = CuStateVecMatrix(
             cp.array(matrix, dtype=dtype), matrix_dtype,
         )
-    basis_bits = [i.index[0] for i in list(operator.all_qubits)]
-    expectation_value = 0
+    # Match cuStateVec's little-endian convention: Sort basis bits in LSB-to-MSB order
+    basis_bits = sorted([i.index[0] for i in list(operator.all_qubits)])
+    expectation_value = np.zeros(1, dtype=np.complex128)
     with handle.stream:
         cusv.compute_expectation(
             handle.handle,
             statevector.array.data.ptr,
             statevector.cuda_dtype,
             statevector.n_qubits,
-            expectation_value,
-            matrix.cuda_dtype,
+            expectation_value.ctypes.data,
+            cudaDataType.CUDA_R_64F,
             matrix.matrix.data.ptr,
             matrix.cuda_dtype,
             cusv.MatrixLayout.ROW,
@@ -191,4 +193,4 @@ def compute_expectation(
             0,
         )
     handle.stream.synchronize()
-    return expectation_value
+    return expectation_value[0]
