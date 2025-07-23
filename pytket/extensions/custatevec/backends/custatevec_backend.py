@@ -330,7 +330,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 # LSB-MSB ordering of the bit strings
                 bit_ordering = sorted([i.index[0] for i in circuit.qubits])
                 rng = np.random.default_rng(seed)
-                randnums = rng.random(n_shots).tolist()
+                randnums = rng.random(n_shots, dtype=np.float64).tolist()
                 
                 cusv.sampler_preprocess(
                     handle=libhandle.handle,
