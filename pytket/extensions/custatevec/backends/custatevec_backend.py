@@ -16,6 +16,7 @@
 
 from abc import abstractmethod
 from collections.abc import Sequence
+from collections import Counter
 from uuid import uuid4
 
 import cupy as cp
@@ -295,14 +296,13 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         )
 
     def process_circuits(
-    self,
-    circuits: Sequence[Circuit],
-    n_shots: int | Sequence[int],
-    seed: int | None,
-    valid_check: bool = True,
-    **kwargs: KwargTypes,
-) -> list[ResultHandle]:
-
+        self,
+        circuits: Sequence[Circuit],
+        n_shots: int | Sequence[int],
+        seed: int | None = 4,
+        valid_check: bool = True,
+        **kwargs: KwargTypes,
+    ) -> list[ResultHandle]:
         import cuquantum.custatevec as cusv
         from cuquantum.bindings.custatevec import SamplerOutput
         from pytket.utils.outcomearray import OutcomeArray
@@ -311,11 +311,11 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
-                        libhandle,
-                        circuit.n_qubits,
-                        "zero",
-                        dtype=cudaDataType.CUDA_C_64F,
-                    )
+                    libhandle,
+                    circuit.n_qubits,
+                    "zero",
+                    dtype=cudaDataType.CUDA_C_64F,
+                )
                 run_circuit(libhandle, circuit, sv)
 
                 sampler_descriptor, size_t = cusv.sampler_create(
@@ -326,40 +326,50 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     n_max_shots=n_shots,
                 )
 
-                bit_strings = np.empty((n_shots, 1), dtype=np.int64) # needs to be int64
+                bit_strings = np.empty(
+                    (n_shots, 1), dtype=np.int64
+                )  # needs to be int64
                 # LSB-MSB ordering of the bit strings
                 bit_ordering = sorted([i.index[0] for i in circuit.qubits])
                 rng = np.random.default_rng(seed)
                 randnums = rng.random(n_shots, dtype=np.float64).tolist()
                 # randnums = cp.linspace(0, 1, n_shots, endpoint=False, dtype=np.float64)
-                
+
                 cusv.sampler_preprocess(
                     handle=libhandle.handle,
                     sampler=sampler_descriptor,
                     extra_workspace=0,
                     extra_workspace_size_in_bytes=0,
-                    )
+                )
 
-                cusv.sampler_sample(handle=libhandle.handle,
-                                    sampler=sampler_descriptor,
-                                    bit_strings=bit_strings.ctypes.data,
-                                    bit_ordering=bit_ordering,
-                                    bit_string_len=len(circuit.qubits),
-                                    randnums=randnums,
-                                    n_shots=n_shots,
-                                    output=SamplerOutput.RANDNUM_ORDER,
-                                    )
+                cusv.sampler_sample(
+                    handle=libhandle.handle,
+                    sampler=sampler_descriptor,
+                    bit_strings=bit_strings.ctypes.data,
+                    bit_ordering=bit_ordering,
+                    bit_string_len=len(circuit.qubits),
+                    randnums=randnums,
+                    n_shots=n_shots,
+                    output=SamplerOutput.RANDNUM_ORDER,
+                )
 
                 cusv.sampler_destroy(sampler_descriptor)
-                #TODO: Postprocessing - sample only the qubits that should be measured?
+                # TODO: Postprocessing - sample only the qubits that should be measured?
 
         handle = ResultHandle(str(uuid4()))
-        # Reformat bit_strings for OutcomeArray
-        bit_strings = [[int(bit) for bit in format(int(s), f'0{2}b')] for s in bit_strings.flatten()]  
+        # Reformat bit_strings from list of ints to list of binaries for OutcomeArray
+        bit_strings = [
+            [int(bit) for bit in format(int(s), f"0{2}b")]
+            for s in bit_strings.flatten()
+        ]
         # In order to be able to use the BackendResult functionality,
         # we only pass the array of the statevector to BackendResult
-        self._cache[handle] = {"result": BackendResult(state=cp.asnumpy(sv.array),
-                                                       shots=OutcomeArray.from_readouts(bit_strings))}
+        self._cache[handle] = {
+            "result": BackendResult(
+                state=cp.asnumpy(sv.array),
+                shots=OutcomeArray.from_readouts(bit_strings),
+            )
+        }
         handle_list.append(handle)
         return handle_list
 

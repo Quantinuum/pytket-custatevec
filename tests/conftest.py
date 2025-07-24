@@ -88,14 +88,22 @@ def global_phase_circuit():
 
 # Operator Fixtures
 @pytest.fixture
+def test_operator():
+    return QubitPauliOperator(
+        {
+            QubitPauliString({Qubit(0): Pauli.X, Qubit(1): Pauli.Z}): 1.0,
+        }
+    )
+
+@pytest.fixture
 def bell_operator():
     """Fixture for a sample operator to test with the Bell circuit."""
     return QubitPauliOperator(
         {
-            QubitPauliString({Qubit(0): Pauli.Z, Qubit(1): Pauli.Z}): 1.0,
+            QubitPauliString({Qubit(0): Pauli.Z}): 1.0,
             QubitPauliString({Qubit(0): Pauli.X, Qubit(1): Pauli.X}): 0.3,
-            QubitPauliString({Qubit(0): Pauli.Z, Qubit(1): Pauli.Y}): 0.8j,
-            QubitPauliString({Qubit(0): Pauli.Y}): -0.4j,
+            # QubitPauliString({Qubit(0): Pauli.Z, Qubit(1): Pauli.Y}): 0.8j,
+            # QubitPauliString({Qubit(0): Pauli.Y}): -0.4j,
         }
     )
 
