@@ -326,11 +326,12 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     n_shots,
                 )
 
-                bit_strings = np.empty(n_shots, dtype=np.int32)
+                bit_strings = np.empty((n_shots, 1), dtype=np.int64) # needs to be int64
                 # LSB-MSB ordering of the bit strings
                 bit_ordering = sorted([i.index[0] for i in circuit.qubits])
                 rng = np.random.default_rng(seed)
                 randnums = rng.random(n_shots, dtype=np.float64).tolist()
+                # randnums = cp.linspace(0, 1, n_shots, endpoint=False, dtype=np.float64)
                 
                 cusv.sampler_preprocess(
                     handle=libhandle.handle,
