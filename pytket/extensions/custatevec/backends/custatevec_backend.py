@@ -318,6 +318,10 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 )
                 run_circuit(libhandle, circuit, sv)
 
+                measured_ops = [op for op in circuit if op.op.type == OpType.Measure]
+                measured_qubits = [op.qubits[0] for op in measured_ops]
+                measured_indices = [circuit.qubits.index(q) for q in measured_qubits]
+
                 sampler_descriptor, size_t = cusv.sampler_create(
                     handle=libhandle.handle,
                     sv=sv.array.data.ptr,
@@ -326,9 +330,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     n_max_shots=n_shots,
                 )
 
-                bit_strings = np.empty(
-                    (n_shots, 1), dtype=np.int64
-                )  # needs to be int64
+                bit_strings = np.empty((n_shots, 1), dtype=np.int64)  # needs to be int64
                 # LSB-MSB ordering of the bit strings
                 bit_ordering = sorted([i.index[0] for i in circuit.qubits])
                 rng = np.random.default_rng(seed)
@@ -346,31 +348,40 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     handle=libhandle.handle,
                     sampler=sampler_descriptor,
                     bit_strings=bit_strings.ctypes.data,
-                    bit_ordering=bit_ordering,
-                    bit_string_len=len(circuit.qubits),
+                    bit_ordering=measured_indices,
+                    bit_string_len=len(measured_indices),
                     randnums=randnums,
                     n_shots=n_shots,
                     output=SamplerOutput.RANDNUM_ORDER,
                 )
 
                 cusv.sampler_destroy(sampler_descriptor)
-                # TODO: Postprocessing - sample only the qubits that should be measured?
 
-        handle = ResultHandle(str(uuid4()))
-        # Reformat bit_strings from list of ints to list of binaries for OutcomeArray
-        bit_strings = [
-            [int(bit) for bit in format(int(s), f"0{2}b")]
-            for s in bit_strings.flatten()
-        ]
-        # In order to be able to use the BackendResult functionality,
-        # we only pass the array of the statevector to BackendResult
-        self._cache[handle] = {
-            "result": BackendResult(
-                state=cp.asnumpy(sv.array),
-                shots=OutcomeArray.from_readouts(bit_strings),
-            )
-        }
-        handle_list.append(handle)
+            handle = ResultHandle(str(uuid4()))
+            # Reformat bit_strings from list of 64-bit signed integer (memory-efficient
+            # way for custatevec to save many shots) to list of binaries for OutcomeArray
+            bit_strings = [
+                [int(bit) for bit in format(int(s), f"0{len(measured_indices)}b")]
+                for s in bit_strings.flatten()
+            ]
+            #TODO: Len of qubits or cbits? Also, need to figure out the mapping if non-standard
+            bit_strings_padded = np.zeros((n_shots, len(circuit.bits)), dtype=np.uint8)
+            # Insert the values of bit_strings at their respective positions specified by
+            # bit_ordering into the padded array
+            for i, bit_string in enumerate(bit_strings):
+                for j in range(len(measured_indices)):
+                    bit_strings_padded[i][measured_indices[j]] = bit_string[j]
+
+            # In order to be able to use the BackendResult functionality,
+            # we only pass the array of the statevector to BackendResult
+            self._cache[handle] = {
+                "result": BackendResult(
+                    c_bits=circuit.bits,
+                    state=cp.asnumpy(sv.array),
+                    shots=OutcomeArray.from_readouts(bit_strings_padded),
+                )
+            }
+            handle_list.append(handle)
         return handle_list
 
 

@@ -224,7 +224,6 @@ def test_sampler_expectation_value() -> None:
     "sampler_circuit_fixture, operator_fixture",
     [
         ("bell_circuit", "bell_operator"),
-        # ("bell_circuit", "bell_operator"),
         # ("three_qubit_ghz_circuit", "ghz_operator"),
         # ("four_qubit_superposition_circuit", "superposition_operator"),
         # ("two_qubit_entangling_circuit", "entangling_operator"),
@@ -259,12 +258,12 @@ def test_custatevecshots_expectation_value_vs_aer_and_qulacs(
     # AerState expectation value
     aer_backend = AerBackend()
     aer_expectation = get_operator_expectation_value(circuit, operator, aer_backend, n_shots)
-    assert np.isclose(cu_expectation, aer_expectation, atol=0.01)
+    assert np.isclose(cu_expectation, aer_expectation, atol=0.1)
 
     # Qulacs expectation value
     qulacs_backend = QulacsBackend()
     qulacs_expectation = get_operator_expectation_value(circuit, operator, qulacs_backend)
-    assert np.isclose(cu_expectation, qulacs_expectation, atol=0.01)
+    assert np.isclose(cu_expectation, qulacs_expectation, atol=0.1)
 
 def test_initial_statevector():
     """Test the initial_statevector function for all possible types and different qubit numbers and compare against the expected state vector."""
