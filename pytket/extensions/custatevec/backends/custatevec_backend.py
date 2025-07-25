@@ -331,11 +331,8 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 )
 
                 bit_strings = np.empty((n_shots, 1), dtype=np.int64)  # needs to be int64
-                # LSB-MSB ordering of the bit strings
-                bit_ordering = sorted([i.index[0] for i in circuit.qubits])
                 rng = np.random.default_rng(seed)
                 randnums = rng.random(n_shots, dtype=np.float64).tolist()
-                # randnums = cp.linspace(0, 1, n_shots, endpoint=False, dtype=np.float64)
 
                 cusv.sampler_preprocess(
                     handle=libhandle.handle,
@@ -365,7 +362,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 for s in bit_strings.flatten()
             ]
             #TODO: Len of qubits or cbits? Also, need to figure out the mapping if non-standard
-            bit_strings_padded = np.zeros((n_shots, len(circuit.bits)), dtype=np.uint8)
+            bit_strings_padded = np.zeros((n_shots, len(circuit.qubits)), dtype=np.uint8)
             # Insert the values of bit_strings at their respective positions specified by
             # bit_ordering into the padded array
             for i, bit_string in enumerate(bit_strings):
