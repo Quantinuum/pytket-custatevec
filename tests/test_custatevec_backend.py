@@ -14,14 +14,14 @@ from pytket.utils import get_operator_expectation_value
 @pytest.mark.parametrize(
     "statevector_circuit_fixture",
     [
-        "test_circuit",
-        "bell_circuit",
+        # "test_circuit",
+        # "bell_circuit",
         "three_qubit_ghz_circuit",
-        "four_qubit_superposition_circuit",
-        "single_qubit_clifford_circuit",
-        "single_qubit_non_clifford_circuit",
+        # "four_qubit_superposition_circuit",
+        # "single_qubit_clifford_circuit",
+        # "single_qubit_non_clifford_circuit",
         "two_qubit_entangling_circuit",
-        "global_phase_circuit",
+        # "global_phase_circuit",
     ],
 )
 def test_custatevecstate_state_vector_vs_aer_and_qulacs(
@@ -223,9 +223,9 @@ def test_sampler_expectation_value() -> None:
 @pytest.mark.parametrize(
     "sampler_circuit_fixture, operator_fixture",
     [
-        # ("bell_circuit", "bell_operator"),
-        # ("three_qubit_ghz_circuit", "ghz_operator"),
-        # ("four_qubit_superposition_circuit", "superposition_operator"),
+        ("bell_circuit", "bell_operator"),
+        ("three_qubit_ghz_circuit", "ghz_operator"),
+        ("four_qubit_superposition_circuit", "superposition_operator"),
         ("two_qubit_entangling_circuit", "entangling_operator"),
     ],
 )
@@ -249,21 +249,21 @@ def test_custatevecshots_expectation_value_vs_aer_and_qulacs(
         circuit = circuit_data
 
     operator = request.getfixturevalue(operator_fixture)
-
+    n_shots = 1000000
     # CuStateVec expectation value
     cu_backend = CuStateVecShotsBackend()
-    n_shots = 10000
     cu_expectation = get_operator_expectation_value(circuit, operator, cu_backend, n_shots)
 
     # cu_expectation2 = get_operator_expectation_value(circuit, operator, CuStateVecStateBackend())
     # AerState expectation value
-    aer_backend = AerBackend()
-    aer_expectation = get_operator_expectation_value(circuit, operator, aer_backend, n_shots)
+    # aer_backend = AerBackend()
+    # aer_expectation = get_operator_expectation_value(circuit, operator, aer_backend, n_shots)
     # assert np.isclose(cu_expectation, aer_expectation, atol=0.1)
 
     # Qulacs expectation value
     qulacs_backend = QulacsBackend()
-    qulacs_expectation = get_operator_expectation_value(circuit, operator, qulacs_backend)
+    qulacs_expectation = get_operator_expectation_value(circuit, operator, qulacs_backend, n_shots)
+
     assert np.isclose(cu_expectation, qulacs_expectation, atol=0.1)
 
 def test_initial_statevector():

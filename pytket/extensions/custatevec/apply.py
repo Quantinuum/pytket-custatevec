@@ -73,7 +73,7 @@ def apply_matrix(
     # After relabling with _qubit_idx_map, cuStateVec.apply_matrix function still
     # requires its list of target indices to be in the LSB-to-MSB order.
     # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
-    targets.reverse()
+    targets.reverse() #TODO: Check if this is still needed after compilation - is there ever more than 1 qubit in there?
     if controls is None:
         controls = []
     else:

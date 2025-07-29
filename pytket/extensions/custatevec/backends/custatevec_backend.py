@@ -318,10 +318,12 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 )
                 run_circuit(libhandle, circuit, sv)
 
-                measured_ops = [op for op in circuit if op.op.type == OpType.Measure]
-                measured_qubits = [op.qubits[0] for op in measured_ops]
-                measured_indices = [circuit.qubits.index(q) for q in measured_qubits]
-
+                # measured_qubits = [op.qubits[0] for op in measured_ops]
+                # measured_indices = [circuit.qubits.index(q) for q in measured_qubits]
+                
+                _qubit_idx_map = {q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))}
+                measured_indices = [_qubit_idx_map[x] for x in circuit.qubit_readout]
+                measured_indices.reverse()
                 sampler_descriptor, size_t = cusv.sampler_create(
                     handle=libhandle.handle,
                     sv=sv.array.data.ptr,
@@ -353,34 +355,34 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 )
 
                 cusv.sampler_destroy(sampler_descriptor)
-
+                # print(sv.array)
             handle = ResultHandle(str(uuid4()))
             # Reformat bit_strings from list of 64-bit signed integer (memory-efficient
             # way for custatevec to save many shots) to list of binaries for OutcomeArray
-            bit_strings = [
-                [int(bit) for bit in format(int(s), f"0{len(measured_indices)}b")]
-                for s in bit_strings.flatten()
-            ]
+            bit_strings_binary = [format(s, f"0{len(measured_indices)}b") for s in bit_strings.flatten().tolist()]
+            bit_strings_reformat = [tuple(map(int, binary)) for binary in bit_strings_binary]
+            # bit_strings_binary = [
+            #     [int(bit) for bit in format(int(s), f"0{len(circuit.qubits)}b")]
+            #     for s in bit_strings.flatten()
+            # ]
             #TODO: Len of qubits or cbits? Also, need to figure out the mapping if non-standard
-            bit_strings_padded = np.zeros((n_shots, len(circuit.qubits)), dtype=np.uint8)
+            # bit_strings_padded = np.zeros((n_shots, len(circuit.qubits)), dtype=np.uint8)
             # Insert the values of bit_strings at their respective positions specified by
             # bit_ordering into the padded array
-            for i, bit_string in enumerate(bit_strings):
-                for j in range(len(measured_indices)):
-                    bit_strings_padded[i][measured_indices[j]] = bit_string[j]
+            # for i, bit_string in enumerate(bit_strings_binary):
+            #     for j in range(len(measured_indices)):
+            #         bit_strings_padded[i][measured_indices[j]] = bit_string[j]
 
             # In order to be able to use the BackendResult functionality,
             # we only pass the array of the statevector to BackendResult
             self._cache[handle] = {
                 "result": BackendResult(
-                    c_bits=circuit.bits,
                     state=cp.asnumpy(sv.array),
-                    shots=OutcomeArray.from_readouts(bit_strings_padded),
+                    shots=OutcomeArray.from_readouts(bit_strings_reformat),
                 )
             }
             handle_list.append(handle)
         return handle_list
-
 
 def _check_all_unitary_or_measurements(circuit: Circuit) -> bool:
     """Auxiliary function for custom predicate"""
