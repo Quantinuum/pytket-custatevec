@@ -144,7 +144,7 @@ class _CuStateVecBaseBackend(Backend):
     @abstractmethod
     def process_circuits(
         self,
-        circuits: Sequence[Circuit],
+        circuits: Circuit | Sequence[Circuit],
         n_shots: int | Sequence[int] | None = None,
         valid_check: bool = True,
         **kwargs: KwargTypes,
@@ -198,7 +198,7 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
 
     def process_circuits(
         self,
-        circuits: Sequence[Circuit],
+        circuits: Circuit | Sequence[Circuit],
         n_shots: int | Sequence[int] | None = None,
         valid_check: bool = True,
         **kwargs: KwargTypes,
@@ -218,6 +218,10 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
             Results handle objects.
         """
         # TODO Valid check and compilation pass
+
+        # Ensure circuits is always a sequence
+        circuits = [circuits] if isinstance(circuits, Circuit) else circuits
+
         handle_list = []
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:
@@ -237,7 +241,7 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
 
     def get_operator_expectation_value(
         self,
-        state_circuit: Circuit,
+        circuit: Circuit,
         operator: QubitPauliOperator,
     ) -> np.float64:
         """Calculate the expectation value of a QubitPauliOperator given a quantum state prepared by a circuit.
@@ -260,12 +264,12 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         with CuStateVecHandle() as libhandle:
             sv = initial_statevector(
                 libhandle,
-                state_circuit.n_qubits,
+                circuit.n_qubits,
                 "zero",
                 dtype=cudaDataType.CUDA_C_64F,
             )
-            run_circuit(libhandle, state_circuit, sv)
-            return compute_expectation(libhandle, sv, operator)
+            run_circuit(libhandle, circuit, sv)
+            return compute_expectation(libhandle, sv, operator, circuit)
 
 
 class CuStateVecShotsBackend(_CuStateVecBaseBackend):
@@ -297,7 +301,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
 
     def process_circuits(
         self,
-        circuits: Sequence[Circuit],
+        circuits: Circuit | Sequence[Circuit],
         n_shots: int | Sequence[int],
         seed: int | None = 4,
         valid_check: bool = True,
@@ -307,6 +311,9 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         from cuquantum.bindings.custatevec import SamplerOutput
         from pytket.utils.outcomearray import OutcomeArray
 
+        # Ensure circuits is always a sequence
+        circuits = [circuits] if isinstance(circuits, Circuit) else circuits
+            
         handle_list = []
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:

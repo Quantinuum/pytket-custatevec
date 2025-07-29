@@ -253,7 +253,7 @@ _control_to_gate_map: dict[str, tuple[str, int]] = {
     "CV": ("V", 1),
     "CSX": ("SX", 1),
     "CCX": ("X", 2),
-    "CSWAP": ("CSWAP", 1),
+    "CSWAP": ("SWAP", 1),
     "CRx": ("Rx", 1),
     "CRy": ("Ry", 1),
     "CU1": ("U1", 1),

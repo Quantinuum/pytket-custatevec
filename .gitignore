@@ -27,3 +27,4 @@ jupyter_execute/
 .lightning_studio
 .wget-hsts
 .idea
+test.ipynb

@@ -90,7 +90,7 @@ def run_circuit(
         state = initial_state
     if matrix_dtype is None:
         matrix_dtype = cudaDataType.CUDA_C_64F
-    _logger = set_logger("GeneralState", level=loglevel, file=logfile)
+    _logger = set_logger("RunCircuitLogger", level=loglevel, file=logfile)
 
     _phase = circuit.phase
     if type(_phase) is float:
@@ -164,6 +164,7 @@ def compute_expectation(  # noqa: PLR0913
     handle: CuStateVecHandle,
     statevector: CuStateVector,
     operator: QubitPauliOperator,
+    circuit: Circuit,
     matrix_dtype: cudaDataType | None = None,
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
@@ -189,7 +190,7 @@ def compute_expectation(  # noqa: PLR0913
 
     if matrix_dtype is None:
         matrix_dtype = cudaDataType.CUDA_C_64F
-    _logger = set_logger("GeneralState", level=loglevel, file=logfile)
+    _logger = set_logger("ComputeExpectation", level=loglevel, file=logfile)
 
     # Convert the operator to a sparse matrix and create a CuStateVecMatrix
     dtype = cuquantum_to_np_dtype(matrix_dtype)
@@ -197,10 +198,13 @@ def compute_expectation(  # noqa: PLR0913
     matrix = CuStateVecMatrix(
             cp.array(matrix_array, dtype=dtype), matrix_dtype,
         )
+    _qubit_idx_map: dict[Qubit, int] = {
+        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
+    }
     # Match cuStateVec's little-endian convention: Sort basis bits in LSB-to-MSB order
-    basis_bits = sorted([i.index[0] for i in list(operator.all_qubits)])
+    basis_bits = [_qubit_idx_map[x] for x in operator.all_qubits]
 
-    expectation_value = np.empty(1, dtype=np.float64)
+    expectation_value = np.empty(1, dtype=np.complex128)
 
     with handle.stream:
         cusv.compute_expectation(
@@ -209,10 +213,10 @@ def compute_expectation(  # noqa: PLR0913
             sv_data_type=statevector.cuda_dtype,
             n_index_bits=statevector.n_qubits,
             expectation_value=expectation_value.ctypes.data, # requires **host** pointer
-            expectation_data_type=cudaDataType.CUDA_R_64F,
+            expectation_data_type=cudaDataType.CUDA_C_64F,
             matrix=matrix.matrix.data.ptr,
             matrix_data_type=matrix.cuda_dtype,
-            layout=cusv.MatrixLayout.ROW,
+            layout=cusv.MatrixLayout.COL, # COL -> correct phase for complex exp. val.
             basis_bits=basis_bits,
             n_basis_bits=len(basis_bits),
             compute_type=ComputeType.COMPUTE_DEFAULT,
