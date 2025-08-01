@@ -1,7 +1,12 @@
-import math  # noqa: EXE002, D100
+import math  # noqa: D100
 
-import cupy as cp
-from cuquantum import cudaDataType
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
+
+try:
+    import cupy as cp
+    from cuquantum import cudaDataType
+except ImportError as _cuda_import_err:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 
 from .gate_classes import *  # noqa: F403
 
@@ -12,6 +17,7 @@ class CuStateVector:
     This class provides methods to manipulate and apply operations
     on a state vector.
     """
+
     n_qubits: int
     shape: tuple[int, ...]
 
@@ -40,7 +46,7 @@ class CuStateVector:
         self.cuda_dtype = cuda_dtype
         self.shape = array.shape
 
-    def apply_phase(self, phase : float) -> None:
+    def apply_phase(self, phase: float) -> None:
         """Apply a global phase to the state vector.
 
         Args:

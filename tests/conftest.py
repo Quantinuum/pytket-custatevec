@@ -1,12 +1,15 @@
+import numpy as np  # noqa: D100
 import pytest
-import numpy as np
-from pytket.circuit import Circuit, Qubit
+
+from pytket._tket.circuit import Circuit
+from pytket.circuit import Qubit
 from pytket.pauli import Pauli, QubitPauliString
 from pytket.utils.operators import QubitPauliOperator
 
+
 # Group 1: Single-Qubit Clifford Gates
 @pytest.fixture
-def single_qubit_clifford_circuit():
+def single_qubit_clifford_circuit() -> Circuit:
     c = Circuit(3, 3)
     c.X(0)
     c.Y(1)
@@ -17,24 +20,27 @@ def single_qubit_clifford_circuit():
     c.V(0)
     return c
 
+
 @pytest.fixture
-def bell_circuit():
+def bell_circuit() -> tuple[Circuit, np.ndarray]:
     c = Circuit(2, 2)
     c.H(0)
     c.CX(0, 1)
     expected = np.asarray([1, 0, 0, 1]) * 1 / np.sqrt(2)
     return c, expected
 
+
 @pytest.fixture
-def test_circuit():
+def test_circuit() -> Circuit:
     c = Circuit(3, 3)
     c.X(2)
     c.H(0)
     c.CX(0, 1)
     return c
 
+
 @pytest.fixture
-def three_qubit_ghz_circuit():
+def three_qubit_ghz_circuit() -> tuple[Circuit, np.ndarray]:
     c = Circuit(3, 3)
     c.H(0)
     c.CX(0, 1)
@@ -42,17 +48,19 @@ def three_qubit_ghz_circuit():
     expected = np.asarray([1, 0, 0, 0, 0, 0, 0, 1]) * 1 / np.sqrt(2)
     return c, expected
 
+
 @pytest.fixture
-def four_qubit_superposition_circuit():
+def four_qubit_superposition_circuit() -> tuple[Circuit, np.ndarray]:
     c = Circuit(4, 4)
     for i in range(4):
         c.H(i)
     expected = np.ones(16) / 4
     return c, expected
 
+
 # Group 2: Single-Qubit Non-Clifford or Parameterized Gates
 @pytest.fixture
-def single_qubit_non_clifford_circuit():
+def single_qubit_non_clifford_circuit() -> Circuit:
     c = Circuit(3, 3)
     c.T(0)
     c.Rx(0.5, 1)
@@ -64,9 +72,10 @@ def single_qubit_non_clifford_circuit():
     c.PhasedX(0.2, 0.4, 1)
     return c
 
+
 # Group 3: Two-Qubit Entangling Gates
 @pytest.fixture
-def two_qubit_entangling_circuit():
+def two_qubit_entangling_circuit() -> Circuit:
     c = Circuit(4, 4)
     c.ECR(0, 1)
     c.SWAP(1, 2)
@@ -78,13 +87,30 @@ def two_qubit_entangling_circuit():
     c.ZZMax(0, 3)
     return c
 
+
 # Group 4: Miscellaneous Circuits
 @pytest.fixture
-def global_phase_circuit():
+def global_phase_circuit() -> tuple[Circuit, np.ndarray]:
     c = Circuit(1, 1)
     c.add_phase(0.5)
     expected = np.asarray([1, 0]) * np.exp(1j * np.pi * 0.5)
     return c, expected
+
+
+@pytest.fixture
+def circuit_with_adjoint_gates() -> Circuit:
+    """Circuit with adjoint gates."""
+    c = Circuit(3, 3)
+    c.H(0)
+    c.Sdg(1)
+    c.Tdg(2)
+    c.CSdg(0, 1)
+    c.Vdg(0)
+    c.SXdg(2)
+    c.Vdg(2)
+    c.CSXdg(1, 2)
+    return c
+
 
 def random_line_circuit(n_qubits: int, layers: int) -> Circuit:
     """Random circuit with line connectivity."""
@@ -97,12 +123,10 @@ def random_line_circuit(n_qubits: int, layers: int) -> Circuit:
 
         # Layer of CX gates
         offset = np.mod(i, 2)  # Even layers connect (q0,q1), odd (q1,q2)
-        qubit_pairs = [
-            [c.qubits[i], c.qubits[i + 1]] for i in range(offset, n_qubits - 1, 2)
-        ]
+        qubit_pairs = [[c.qubits[i], c.qubits[i + 1]] for i in range(offset, n_qubits - 1, 2)]
         # Direction of each CX gate is random
         for pair in qubit_pairs:
-            if np.random.rand() > 0.5:  # noqa: NPY002
+            if np.random.rand() > 0.5:  # noqa: NPY002, PLR2004
                 pair = [pair[1], pair[0]]  # noqa: PLW2901
 
         for pair in qubit_pairs:
@@ -111,24 +135,25 @@ def random_line_circuit(n_qubits: int, layers: int) -> Circuit:
     return c
 
 
-def quantum_volume_circuit(n_qubits: int) -> Circuit:
-    """Random quantum volume circuit."""
-    depth = n_qubits
-    c = Circuit(n_qubits)
+# def quantum_volume_circuit(n_qubits: int) -> Circuit:
+#     """Random quantum volume circuit."""
+#     depth = n_qubits
+#     c = Circuit(n_qubits)
 
-    for _ in range(depth):
-        qubits = np.random.permutation([i for i in range(n_qubits)])  # noqa: C416, NPY002
-        qubit_pairs = [[qubits[i], qubits[i + 1]] for i in range(0, n_qubits - 1, 2)]
+#     for _ in range(depth):
+#         qubits = np.random.permutation([i for i in range(n_qubits)])  # noqa: C416, NPY002
+#         qubit_pairs = [[qubits[i], qubits[i + 1]] for i in range(0, n_qubits - 1, 2)]
 
-        for pair in qubit_pairs:
-            # Generate random 4x4 unitary matrix.
-            SU4 = unitary_group.rvs(4)  # random unitary in SU4
-            SU4 = SU4 / (np.linalg.det(SU4) ** 0.25)
-            SU4 = np.asarray(SU4)
-            c.add_unitary2qbox(Unitary2qBox(SU4), *pair)
+#         for pair in qubit_pairs:
+#             # Generate random 4x4 unitary matrix.
+#             SU4 = unitary_group.rvs(4)  # random unitary in SU4
+#             SU4 = SU4 / (np.linalg.det(SU4) ** 0.25)
+#             SU4 = np.asarray(SU4)
+#             c.add_unitary2qbox(Unitary2qBox(SU4), *pair)
 
-    DecomposeBoxes().apply(c)
-    return c
+#     DecomposeBoxes().apply(c)
+#     return c
+
 
 @pytest.fixture
 def q1_empty() -> Circuit:
@@ -246,31 +271,31 @@ def q3_cx01cz12x1rx0() -> Circuit:
     return circuit
 
 
-@pytest.fixture
-def q4_lcu1() -> Circuit:
-    circuit = Circuit(4)
-    circuit.Ry(0.78, 3).Ry(0.27, 2).CX(2, 3).Ry(0.58, 2).Ry(0.21, 3)
-    circuit.Ry(0.12, 0).Ry(0.56, 1)
-    circuit.add_gate(OpType.CnX, [0, 1, 2]).add_gate(OpType.CnX, [0, 1, 3])
-    circuit.X(0).X(1).add_gate(OpType.CnY, [0, 1, 2]).add_gate(OpType.CnY, [0, 1, 3]).X(
-        0
-    ).X(1)
-    circuit.Ry(-0.12, 0).Ry(-0.56, 1)
-    return circuit
+# @pytest.fixture
+# def q4_lcu1() -> Circuit:
+#     circuit = Circuit(4)
+#     circuit.Ry(0.78, 3).Ry(0.27, 2).CX(2, 3).Ry(0.58, 2).Ry(0.21, 3)
+#     circuit.Ry(0.12, 0).Ry(0.56, 1)
+#     circuit.add_gate(OpType.CnX, [0, 1, 2]).add_gate(OpType.CnX, [0, 1, 3])
+#     circuit.X(0).X(1).add_gate(OpType.CnY, [0, 1, 2]).add_gate(OpType.CnY, [0, 1, 3]).X(
+#         0,
+#     ).X(1)
+#     circuit.Ry(-0.12, 0).Ry(-0.56, 1)
+#     return circuit
 
 
-@pytest.fixture
-def q4_lcu1_parameterised() -> Circuit:
-    a, b, c = Symbol("a"), Symbol("b"), Symbol("c")
-    circuit = Circuit(4)
-    circuit.Ry(a, 3).Ry(0.27, 2).CX(2, 3).Ry(b, 2).Ry(0.21, 3)
-    circuit.Ry(0.12, 0).Ry(a, 1)
-    circuit.add_gate(OpType.CnX, [0, 1, 2]).add_gate(OpType.CnX, [0, 1, 3])
-    circuit.X(0).X(1).add_gate(OpType.CnY, [0, 1, 2]).add_gate(OpType.CnY, [0, 1, 3]).X(
-        0
-    ).X(1)
-    circuit.Ry(-b, 0).Ry(-c, 1)
-    return circuit
+# @pytest.fixture
+# def q4_lcu1_parameterised() -> Circuit:
+#     a, b, c = Symbol("a"), Symbol("b"), Symbol("c")
+#     circuit = Circuit(4)
+#     circuit.Ry(a, 3).Ry(0.27, 2).CX(2, 3).Ry(b, 2).Ry(0.21, 3)
+#     circuit.Ry(0.12, 0).Ry(a, 1)
+#     circuit.add_gate(OpType.CnX, [0, 1, 2]).add_gate(OpType.CnX, [0, 1, 3])
+#     circuit.X(0).X(1).add_gate(OpType.CnY, [0, 1, 2]).add_gate(OpType.CnY, [0, 1, 3]).X(
+#         0,
+#     ).X(1)
+#     circuit.Ry(-b, 0).Ry(-c, 1)
+#     return circuit
 
 
 @pytest.fixture
@@ -322,17 +347,17 @@ def q5_h0s1rz2ry3tk4tk13() -> Circuit:
     return circuit
 
 
-@pytest.fixture
-def q5_h0s1rz2ry3tk4tk13_parameterised() -> Circuit:
-    a, b, c = Symbol("a"), Symbol("b"), Symbol("c")
-    circuit = Circuit(5)
-    circuit.H(0)
-    circuit.S(1)
-    circuit.Rz(a * c, 2)
-    circuit.Ry(b + a, 3)
-    circuit.TK1(a, b, c, 4)
-    circuit.TK2(a - b, c - a, (a + b) * c, 1, 3)
-    return circuit
+# @pytest.fixture
+# def q5_h0s1rz2ry3tk4tk13_parameterised() -> Circuit:
+#     a, b, c = Symbol("a"), Symbol("b"), Symbol("c")
+#     circuit = Circuit(5)
+#     circuit.H(0)
+#     circuit.S(1)
+#     circuit.Rz(a * c, 2)
+#     circuit.Ry(b + a, 3)
+#     circuit.TK1(a, b, c, 4)
+#     circuit.TK2(a - b, c - a, (a + b) * c, 1, 3)
+#     return circuit
 
 
 @pytest.fixture
@@ -357,66 +382,68 @@ def q20_line_circ_20_layers() -> Circuit:
     return random_line_circuit(n_qubits=20, layers=20)
 
 
-@pytest.fixture
-def q6_qvol() -> Circuit:
-    np.random.seed(1)  # noqa: NPY002
-    return quantum_volume_circuit(n_qubits=6)
+# @pytest.fixture
+# def q6_qvol() -> Circuit:
+#     np.random.seed(1)  # noqa: NPY002
+#     return quantum_volume_circuit(n_qubits=6)
 
 
-@pytest.fixture
-def q8_qvol() -> Circuit:
-    np.random.seed(1)  # noqa: NPY002
-    return quantum_volume_circuit(n_qubits=8)
+# @pytest.fixture
+# def q8_qvol() -> Circuit:
+#     np.random.seed(1)  # noqa: NPY002
+#     return quantum_volume_circuit(n_qubits=8)
 
 
-@pytest.fixture
-def q15_qvol() -> Circuit:
-    np.random.seed(1)  # noqa: NPY002
-    return quantum_volume_circuit(n_qubits=15)
+# @pytest.fixture
+# def q15_qvol() -> Circuit:
+#     np.random.seed(1)  # noqa: NPY002
+#     return quantum_volume_circuit(n_qubits=15)
 
 
-@pytest.fixture
-def q3_toffoli_box_with_implicit_swaps() -> Circuit:
-    # Using specific permutation here
-    perm = {
-        (False, False): (True, True),
-        (False, True): (False, False),
-        (True, False): (True, False),
-        (True, True): (False, True),
-    }
+# @pytest.fixture
+# def q3_toffoli_box_with_implicit_swaps() -> Circuit:
+#     # Using specific permutation here
+#     perm = {
+#         (False, False): (True, True),
+#         (False, True): (False, False),
+#         (True, False): (True, False),
+#         (True, True): (False, True),
+#     }
 
-    # Create a circuit with more qubits and multiple applications of the permutation
-    # above
-    circ = Circuit(3)
+#     # Create a circuit with more qubits and multiple applications of the permutation
+#     # above
+#     circ = Circuit(3)
 
-    # Create the circuit
-    circ.add_toffolibox(ToffoliBox(perm), [Qubit(0), Qubit(1)])  # type: ignore
-    circ.add_toffolibox(ToffoliBox(perm), [Qubit(1), Qubit(2)])  # type: ignore
+#     # Create the circuit
+#     circ.add_toffolibox(ToffoliBox(perm), [Qubit(0), Qubit(1)])
+#     circ.add_toffolibox(ToffoliBox(perm), [Qubit(1), Qubit(2)])
 
-    DecomposeBoxes().apply(circ)
-    CnXPairwiseDecomposition().apply(circ)
-    Transform.OptimiseCliffords().apply(circ)
+#     DecomposeBoxes().apply(circ)
+#     CnXPairwiseDecomposition().apply(circ)
+#     Transform.OptimiseCliffords().apply(circ)
 
-    # Check that, indeed, there are implicit swaps
-    implicit_perm = circ.implicit_qubit_permutation()
-    assert any(qin != qout for qin, qout in implicit_perm.items())
+#     # Check that, indeed, there are implicit swaps
+#     implicit_perm = circ.implicit_qubit_permutation()
+#     assert any(qin != qout for qin, qout in implicit_perm.items())
 
-    return circ
+#     return circ
 
 
 # Operator Fixtures
 
+
 @pytest.fixture
-def single_qubit_operator():
+def single_qubit_operator() -> QubitPauliOperator:
     """Fixture for a sample operator to test with single-qubit circuits."""
     return QubitPauliOperator(
         {
             QubitPauliString({Qubit(0): Pauli.X}): 0.4,
-        }
+        },
     )
 
+
 @pytest.fixture
-def two_qubit_operator():
+def two_qubit_operator() -> QubitPauliOperator:
     """Fixture for a sample operator to test with the Bell circuit."""
     return QubitPauliOperator(
         {
@@ -424,25 +451,27 @@ def two_qubit_operator():
             QubitPauliString({Qubit(0): Pauli.X, Qubit(1): Pauli.X}): 1.0,
             QubitPauliString({Qubit(0): Pauli.Z, Qubit(1): Pauli.Y}): 0.8j,
             QubitPauliString({Qubit(0): Pauli.Y}): -0.4j,
-        }
+        },
     )
 
+
 @pytest.fixture
-def three_qubit_operator():
+def three_qubit_operator() -> QubitPauliOperator:
     """Fixture for an operator to test with the GHZ circuit."""
     return QubitPauliOperator(
         {
             QubitPauliString({Qubit(0): Pauli.Z, Qubit(1): Pauli.Z, Qubit(2): Pauli.Z}): 1.0,
             QubitPauliString({Qubit(0): Pauli.X, Qubit(1): Pauli.X, Qubit(2): Pauli.X}): 0.5,
-        }
+        },
     )
 
+
 @pytest.fixture
-def four_qubit_operator():
+def four_qubit_operator() -> QubitPauliOperator:
     """Fixture for an operator to test with the entangling circuit."""
     return QubitPauliOperator(
         {
             QubitPauliString({Qubit(0): Pauli.X, Qubit(1): Pauli.X}): 0.8,
             QubitPauliString({Qubit(2): Pauli.Y, Qubit(3): Pauli.Y}): 0.6,
-        }
+        },
     )

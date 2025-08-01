@@ -16,6 +16,7 @@
 
 from abc import abstractmethod
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import cupy as cp
@@ -36,6 +37,7 @@ from pytket.extensions.custatevec.custatevec import (
     initial_statevector,
     run_circuit,
 )
+from pytket.extensions.custatevec.gate_definitions import _control_to_gate_map, gate_list
 from pytket.extensions.custatevec.handle import CuStateVecHandle
 from pytket.passes import (
     BasePass,
@@ -58,6 +60,9 @@ from pytket.utils.outcomearray import OutcomeArray
 from pytket.utils.results import KwargTypes
 
 from .._metadata import __extension_name__, __extension_version__  # noqa: TID252
+
+if TYPE_CHECKING:
+    from pytket.circuit import Qubit
 
 
 class _CuStateVecBaseBackend(Backend):
@@ -89,7 +94,7 @@ class _CuStateVecBaseBackend(Backend):
             NoMidMeasurePredicate(),
             NoBarriersPredicate(),
         ]
-        return preds
+        return preds  # noqa: RET504
 
     def rebase_pass(self) -> BasePass:
         """This method returns a dummy pass that does nothing, since there is no need to rebase.
@@ -116,7 +121,7 @@ class _CuStateVecBaseBackend(Backend):
         Returns:
             Compilation pass guaranteeing required predicates.
         """
-        assert optimisation_level in range(3)
+        assert optimisation_level in range(3)  # noqa: S101
         seq = [
             DecomposeBoxes(),
             RemoveRedundancies(),
@@ -126,7 +131,7 @@ class _CuStateVecBaseBackend(Backend):
         # benchmarked what's their effect on the simulation time.
         if optimisation_level == 1:
             seq.append(SynthesiseTket())  # Optional fast optimisation
-        elif optimisation_level == 2:
+        elif optimisation_level == 2:  # noqa: PLR2004
             seq.append(FullPeepholeOptimise())  # Optional heavy optimisation
         seq.append(self.rebase_pass())  # Map to target gate set
         return SequencePass(seq)
@@ -145,11 +150,12 @@ class _CuStateVecBaseBackend(Backend):
         raise CircuitNotRunError(handle)
 
     @abstractmethod
-    def process_circuits(
+    def process_circuits(  # noqa: D417
         self,
         circuits: Circuit | Sequence[Circuit],
-        n_shots: int | Sequence[int] | None = None,
-        valid_check: bool = True,  # noqa: FBT001, FBT002
+        n_shots: int,
+        seed: int,
+        valid_check: bool,
         **kwargs: KwargTypes,
     ) -> list[ResultHandle]:
         """Submits circuits to the backend for running.
@@ -190,21 +196,18 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
             architecture=None,
             device_name="NVIDIA GPU",
             version=__extension_name__ + "==" + __extension_version__,
-            # The only constraint to the gateset is that they must be unitary matrices
-            # or end-of-circuit measurements. These constraints are already specified
-            # in the required_predicates of the backend. The empty set for gateset is
-            # meant to be interpreted as "all gates".
-            # TODO: list all gates in a programmatic way?
-            gate_set=set(),
+            # All currently implemented gates including controlled gates
+            gate_set={gate.name for gate in gate_list}.union(_control_to_gate_map.keys()),  # type: ignore[no-untyped-call]
             misc={"characterisation": None},
         )
 
-    def process_circuits(
+    def process_circuits(  # noqa: D417
         self,
         circuits: Circuit | Sequence[Circuit],
-        n_shots: int | Sequence[int] | None = None,
+        n_shots: int = 0,  # noqa: ARG002
+        seed: int = 0,  # noqa: ARG002
         valid_check: bool = True,
-        **kwargs: KwargTypes,
+        **kwargs: KwargTypes,  # noqa: ARG002
     ) -> list[ResultHandle]:
         """Submits circuits to the backend for running.
 
@@ -214,24 +217,27 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         Args:
             circuits: List of circuits to be submitted.
             n_shots: Number of shots in case of shot-based calculation.
-                This should be ``None``, since this backend does not support shots.
+                This is unused, since this backend does not support shots.
+            seed: Seed for random number generation.
+                This is unused, since this backend does not support shots.
             valid_check: Whether to check for circuit correctness.
 
         Returns:
             Results handle objects.
         """
-        # TODO Valid check and compilation pass
-
         # Ensure circuits is always a sequence
         circuits = [circuits] if isinstance(circuits, Circuit) else circuits
+
+        if valid_check:
+            self._check_all_circuits(circuits, nomeasure_warn=False)
 
         handle_list = []
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
-                    libhandle,
-                    circuit.n_qubits,
-                    "zero",
+                    handle=libhandle,
+                    n_qubits=circuit.n_qubits,
+                    sv_type="zero",
                     dtype=cudaDataType.CUDA_C_64F,
                 )
                 run_circuit(libhandle, circuit, sv)
@@ -263,12 +269,12 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         Returns:
             np.float64: The computed expectation value of the operator with respect to
             the quantum state.
-        """  # noqa: E501
+        """
         with CuStateVecHandle() as libhandle:
             sv = initial_statevector(
-                libhandle,
-                circuit.n_qubits,
-                "zero",
+                handle=libhandle,
+                n_qubits=circuit.n_qubits,
+                sv_type="zero",
                 dtype=cudaDataType.CUDA_C_64F,
             )
             run_circuit(libhandle, circuit, sv)
@@ -293,48 +299,59 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
             architecture=None,
             device_name="NVIDIA GPU",
             version=__extension_name__ + "==" + __extension_version__,
-            # The only constraint to the gateset is that they must be unitary matrices
-            # or end-of-circuit measurements. These constraints are already specified
-            # in the required_predicates of the backend. The empty set for gateset is
-            # meant to be interpreted as "all gates".
-            # TODO: list all gates in a programmatic way?
-            gate_set=set(),
+            # All currently implemented gates including controlled gates
+            gate_set={gate.name for gate in gate_list}.union(_control_to_gate_map.keys()),  # type: ignore[no-untyped-call]
             misc={"characterisation": None},
         )
 
-    def process_circuits(
+    def process_circuits(  # noqa: D417
         self,
         circuits: Circuit | Sequence[Circuit],
-        n_shots: int | Sequence[int],
-        seed: int | None = 4,
+        n_shots: int,
+        seed: int = 4,  # type: ignore[override]
         valid_check: bool = True,
-        **kwargs: KwargTypes,
+        **kwargs: KwargTypes,  # noqa: ARG002
     ) -> list[ResultHandle]:
+        """Submits circuits to the backend for running and returns result handles.
 
+        Args:
+            circuits: List of circuits to be submitted.
+            n_shots: Number of shots for shot-based calculation.
+            seed: Seed for random number generation.
+            valid_check: Whether to check for circuit correctness.
+
+        Returns:
+            List of result handles for the submitted circuits.
+        """
         # Ensure circuits is always a sequence
         circuits = [circuits] if isinstance(circuits, Circuit) else circuits
+
+        if valid_check:
+            self._check_all_circuits(circuits, nomeasure_warn=False)
 
         handle_list = []
         for circuit in circuits:
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
-                    libhandle,
-                    circuit.n_qubits,
-                    "zero",
+                    handle=libhandle,
+                    n_qubits=circuit.n_qubits,
+                    sv_type="zero",
                     dtype=cudaDataType.CUDA_C_64F,
                 )
                 run_circuit(libhandle, circuit, sv)
 
-                _qubit_idx_map = {q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))}
-
-                # Identify each qubit with an index
-                # IMPORTANT: Reverse qubit indices to match cuStateVec's little-endian convention
-                # (qubit 0 = least significant) vs pytket's big-endian (qubit 0 = most significant).
+                # IMPORTANT: _qubit_idx_map matches cuStateVec's little-endian convention
+                # (qubit 0 = least significant) with pytket's big-endian (qubit 0 = most significant).
                 # Now all operations by the cuStateVec library will be in the correct order.
-                measured_qubit_indices = [_qubit_idx_map[x] for x in circuit.qubit_readout]
-                measured_qubit_indices.reverse()
+                _qubit_idx_map: dict[Qubit, int] = {q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))}
+                # Get relabeled qubit indices that will be measured
+                measured_qubits = [_qubit_idx_map[x] for x in circuit.qubit_readout]
+                # IMPORTANT: After relabling with _qubit_idx_map, cuStateVec.sampler_sample function still
+                # requires its list of measured qubits to be in the LSB-to-MSB order.
+                # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
+                measured_qubits.reverse()
 
-                sampler_descriptor, size_t = cusv.sampler_create(
+                sampler_descriptor, size_t = cusv.sampler_create(  # type: ignore[no-untyped-call]
                     handle=libhandle.handle,
                     sv=sv.array.data.ptr,
                     sv_data_type=cudaDataType.CUDA_C_64F,
@@ -348,34 +365,33 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 rng = np.random.default_rng(seed)
                 randnums = rng.random(n_shots, dtype=np.float64).tolist()
 
-                cusv.sampler_preprocess(
+                cusv.sampler_preprocess(  # type: ignore[no-untyped-call]
                     handle=libhandle.handle,
                     sampler=sampler_descriptor,
                     extra_workspace=0,
                     extra_workspace_size_in_bytes=0,
                 )
 
-                cusv.sampler_sample(
+                cusv.sampler_sample(  # type: ignore[no-untyped-call]
                     handle=libhandle.handle,
                     sampler=sampler_descriptor,
                     bit_strings=bit_strings_int64.ctypes.data,
-                    bit_ordering=measured_qubit_indices,
-                    bit_string_len=len(measured_qubit_indices),
+                    bit_ordering=measured_qubits,
+                    bit_string_len=len(measured_qubits),
                     randnums=randnums,
                     n_shots=n_shots,
                     output=SamplerOutput.RANDNUM_ORDER,
                 )
 
-                cusv.sampler_destroy(sampler_descriptor)
+                cusv.sampler_destroy(sampler_descriptor)  # type: ignore[no-untyped-call]
 
             handle = ResultHandle(str(uuid4()))
 
             # Reformat bit_strings from list of 64-bit signed integer (memory-efficient
             # way for custatevec to save many shots) to list of binaries for OutcomeArray
-            bit_strings_binary = [format(s, f"0{len(measured_qubit_indices)}b") for s in bit_strings_int64.flatten().tolist()]
-            bit_strings_binary = [tuple(map(int, binary)) for binary in bit_strings_binary]
+            bit_strings_binary = [format(s, f"0{len(measured_qubits)}b") for s in bit_strings_int64.flatten().tolist()]
+            bit_strings_binary = [tuple(map(int, binary)) for binary in bit_strings_binary]  # type: ignore[misc]
 
-            #TODO: What happens to the classical bits
             # In order to be able to use the BackendResult functionality,
             # we only pass the array of the statevector to BackendResult
             self._cache[handle] = {

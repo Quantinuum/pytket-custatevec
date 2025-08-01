@@ -1,3 +1,5 @@
+"""Module for testing miscellaneous utility functions."""
+
 import numpy as np
 
 from pytket.architecture import Architecture
@@ -14,7 +16,7 @@ def test_remove_meas_and_implicit_swaps() -> None:
     def circuit_with_measurement() -> Circuit:
         """Circuit with measurements.
 
-        TODO: Enforce qubit architecture in the circuit to ensure that implicit swaps are present.
+        # TODO: Enforce qubit architecture in the circuit to ensure that implicit swaps are present.
         """
         circ = Circuit(5)
         circ.CX(0, 1)
@@ -28,9 +30,8 @@ def test_remove_meas_and_implicit_swaps() -> None:
         mapper = DefaultMappingPass(arc)
         cu = CompilationUnit(circ)
         mapper.apply(cu)
-        circ1 = cu.circuit
 
-        return circ1
+        return cu.circuit
 
     original_circ = circuit_with_measurement()
     # Remove measurements
@@ -39,18 +40,20 @@ def test_remove_meas_and_implicit_swaps() -> None:
     cu_backend = CuStateVecStateBackend()
 
     cu_handle_clean = cu_backend.process_circuits([clean_circ])
-    sv_clean = cu_backend.get_result(cu_handle_clean[0]).get_state().array
+    sv_clean = cu_backend.get_result(cu_handle_clean[0]).get_state()
 
     cu_handle_original = cu_backend.process_circuits([original_circ])
-    sv_original = cu_backend.get_result(cu_handle_original[0]).get_state().array
+    sv_original = cu_backend.get_result(cu_handle_original[0]).get_state()
 
     assert np.allclose(sv_original, sv_clean, atol=1e-8), "Statevectors do not match"
+
 
 def test_remove_meas_and_implicit_swaps_mid_circuit() -> None:
     """Test the _remove_meas_and_implicit_swaps function with mid-circuit measurements.
 
     It should throw an error if the circuit has mid-circuit measurements.
     """
+
     def circuit_with_mid_circuit_measurements() -> Circuit:
         """Circuit with mid-circuit measurement."""
         circuit = Circuit(1, 1)
@@ -65,4 +68,4 @@ def test_remove_meas_and_implicit_swaps_mid_circuit() -> None:
     except ValueError as e:
         assert str(e) == "Circuit contains a mid-circuit measurement"  # noqa: PT017
     else:
-        raise AssertionError("Expected ValueError for mid-circuit measurements not raised.")  # noqa: EM101, TRY003
+        raise AssertionError("Expected ValueError for mid-circuit measurements not raised.")

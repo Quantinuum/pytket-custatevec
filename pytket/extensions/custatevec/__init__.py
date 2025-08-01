@@ -13,8 +13,7 @@
 # limitations under the License.
 """Module for conversion from tket primitives to cuQuantum primitives."""
 
-from .backends import CuStateVecStateBackend, CuStateVecShotsBackend
-from .handle import CuStateVecHandle
-
 # _metadata.py is copied to the folder after installation.
-from ._metadata import __extension_version__, __extension_name__  # type: ignore
+from ._metadata import __extension_name__, __extension_version__  # noqa: F401
+from .backends import CuStateVecShotsBackend, CuStateVecStateBackend  # noqa: F401
+from .handle import CuStateVecHandle  # noqa: F401

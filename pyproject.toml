@@ -9,25 +9,26 @@ description = "Extension for pytket providing access to cuStateVec functionality
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-  { name = "Gabriel Matos", email = "gabriel.matos@quantinuum.com"}, 
   { name = "Fabian Finger", email = "fabian.finger@quantinuum.com" },
-  { name = "Pranav Kalidindi", email = "pranav.kalidindi@quantinuum.com" }, 
+  { name = "Gabriel Matos", email = "gabriel.matos@quantinuum.com"},
+  { name = "Pranav Kalidindi", email = "pranav.kalidindi@quantinuum.com" },
 ]
 
-dependencies = ["pytket", "cuquantum-cu12"]
+dependencies = ["pytket"]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-  "pre-commit==4.1.0",
-  "pytest==8.3.4",
+  "pre-commit==4.3.0",
+  "pytest==8.4.1",
   "sphinx==8.1.3",
-  "ruff",
-  "mypy",
-  "pyright"
+  "ruff==0.12.12",
+  "mypy==1.17.1",
 ]
 
 test = [
-  "pytest"
+  "pytest",
+  "pytket-qiskit",
+  "pytket-qulacs",
 ]
 
 [tool.setuptools.packages.find]
@@ -36,15 +37,12 @@ where = ["."]
 [project.urls]
 Repository = "https://github.com/CQCL/pytket-custatevec.git"
 
-# See https://microsoft.github.io/pyright/#/getting-started
-[tool.pyright]
-include = ["pytket/extensions/custatevec", "tests"]
-ignore = ["**/*.ipynb"]
-pythonVersion = "3.10"
-typeCheckingMode = "strict"
-
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
 [tool.refurb]
 python_version = "3.10"
+ignore = ["FURB184"]
+
+[tool.typos.default.extend-words]
+aer = "aer"

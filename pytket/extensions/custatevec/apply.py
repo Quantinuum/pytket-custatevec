@@ -1,9 +1,18 @@
+"""Functions for wrapping the application custatevec functions to pytket-custatevec specific class instances."""
+
 from collections.abc import Sequence
 
-import cuquantum.custatevec as cusv  # type: ignore
 import numpy as np
-from cuquantum import ComputeType
-from cuquantum.custatevec import Pauli as cusvPauli
+
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
+
+try:
+    import cuquantum.custatevec as cusv
+    from cuquantum import ComputeType
+    from cuquantum.custatevec import Pauli as cusvPauli  # type: ignore[import-error]
+except ImportError as _cuda_import_err:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
+
 
 from pytket.circuit import OpType
 
@@ -60,30 +69,26 @@ def apply_matrix(
         None: This function modifies the statevector in place.
 
     Notes:
-        - The supplied initial statevector is generated with cuStateVec and therefore follows little-endian.
         - cuStateVec expects the target qubits to be specified in little-endian
           order. This function reverses the order of the targets to comply with
           this requirement.
         - The matrix should only act on the target qubits. cuStateVec internally
           handles embedding the matrix into the full system based on the
           specified target qubits.
+        - Since we always set a device memory handler through the CuStateVecHandle,
+          the extraWorkspace can be set to null, and the extraWorkspaceSizeInBytes can be set to 0.
     """
-    targets = [targets] if targets is int else targets
-    # IMPORTANT: Translate qubit order for cuStateVec.apply_matrix.
-    # After relabling with _qubit_idx_map, cuStateVec.apply_matrix function still
+    targets = [targets] if isinstance(targets, int) else list(targets)
+    # IMPORTANT: After relabling with _qubit_idx_map, cuStateVec.apply_matrix function still
     # requires its list of target indices to be in the LSB-to-MSB order.
     # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
-    targets.reverse() #TODO: Check if this is still needed after compilation - is there ever more than 1 qubit in there?
-    if controls is None:
-        controls = []
-    else:
-        controls = [controls] if controls is int else controls
-    if control_bit_values is None:
-        control_bit_values = []
-    else:
-        control_bit_values = (
-            [control_bit_values] if control_bit_values is int else control_bit_values
-        )
+    # Example: For a 4-qubit SWAP(q[2], q[3]), we identify the target qubit indices according to _qubit_idx_map with [1, 0].
+    # cuStateVec.apply_matrix requires this to be reversed to [0, 1].
+    targets.reverse()  # type: ignore[union-attr]
+    controls = [] if controls is None else [controls] if isinstance(controls, int) else list(controls)
+    control_bit_values = (
+        [] if control_bit_values is None else [control_bit_values] if isinstance(control_bit_values, int) else list(control_bit_values)
+    )
 
     # Note: cuStateVec expects the matrix to act only on the target qubits.
     # For example, even in a multi-qubit system (e.g., 2 qubits),
@@ -110,11 +115,14 @@ def apply_matrix(
     )
 
 
-def pytket_paulis_to_custatevec_paulis(pauli_rotation_type: OpType, angle_pi: float) -> tuple[list[cusvPauli], float]:
+def pytket_paulis_to_custatevec_paulis(
+    pauli_rotation_type: OpType,
+    angle_pi: float,
+) -> tuple[list[cusvPauli], float]:
     """Map pytket OpType to cuStateVec Pauli and convert angle from multiples of π to radians.
 
     Args:
-        op_type (OpType): The pytket operation type (e.g., Rx, Ry, Rz).
+        pauli_rotation_type (OpType): The pytket operation type (e.g., Rx, Ry, Rz).
         angle_pi (float): The angle in multiples of π.
 
     Returns:
@@ -134,7 +142,7 @@ def pytket_paulis_to_custatevec_paulis(pauli_rotation_type: OpType, angle_pi: fl
     # is in multiples of π, so we convert it to radians. Additionally,
     # we apply a factor of 0.5 with a negative sign to render the
     # Pauli rotation an actual rotation gate in the conventional definition.
-    angle_radians = - angle_pi * 0.5 * np.pi
+    angle_radians = -angle_pi * 0.5 * np.pi
     return paulis, angle_radians
 
 
@@ -147,28 +155,44 @@ def apply_pauli_rotation(
     controls: Sequence[int] | int | None = None,
     control_bit_values: Sequence[int] | int | None = None,
 ) -> None:
-    targets = [targets] if targets is int else targets
-    # IMPORTANT: Translate qubit order for cuStateVec.apply_pauli_rotation.
-    # After relabling with _qubit_idx_map, cuStateVec.apply_pauli_rotation function still
+    """Apply a Pauli rotation to a statevector using cuStateVec.
+
+    Args:
+        handle (CuStateVecHandle): The cuStateVec handle for managing the
+            cuStateVec library context.
+        paulis (Sequence[cusvPauli]): The sequence of Pauli operators to apply.
+        statevector (CuStateVector): The statevector to which the Pauli rotation
+            will be applied.
+        angle (float): The rotation angle in radians.
+        targets (int | Sequence[int]): The target qubit(s) on which the
+            Pauli rotation will act.
+        controls (Sequence[int] | int | None, optional): The control qubit(s)
+            for the operation. If None, no control qubits are used. Defaults
+            to None.
+        control_bit_values (Sequence[int] | int | None, optional): The control
+            bit values corresponding to the control qubits. If None, no
+            control bit values are used. Defaults to None.
+
+    Returns:
+        None: This function modifies the statevector in place.
+    """
+    targets = [targets] if isinstance(targets, int) else list(targets)
+    # IMPORTANT: After relabling with _qubit_idx_map, cuStateVec.apply_pauli_rotation function still
     # requires its list of target indices to be in the LSB-to-MSB order.
     # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
+    # Example: For a 4-qubit SWAP(q[2], q[3]), we identify the target qubit indices according to _qubit_idx_map with [1, 0].
+    # cuStateVec.apply_pauli_rotation requires this to be reversed to [0, 1].
     targets.reverse()
-    if controls is None:
-        controls = []
-    else:
-        controls = [controls] if controls is int else controls
-    if control_bit_values is None:
-        control_bit_values = []
-    else:
-        control_bit_values = (
-            [control_bit_values] if control_bit_values is int else control_bit_values
-        )
+    controls = [] if controls is None else [controls] if isinstance(controls, int) else list(controls)
+    control_bit_values = (
+        [] if control_bit_values is None else [control_bit_values] if isinstance(control_bit_values, int) else list(control_bit_values)
+    )
 
     cusv.apply_pauli_rotation(
         handle=handle.handle,
         sv=statevector.array.data.ptr,
         sv_data_type=statevector.cuda_dtype,
-        n_index_bits=statevector.n_qubits, # TOTAL number of qubits in the statevector
+        n_index_bits=statevector.n_qubits,  # TOTAL number of qubits in the statevector
         theta=angle,
         paulis=paulis,
         targets=targets,
