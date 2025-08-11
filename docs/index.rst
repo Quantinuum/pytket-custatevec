@@ -27,7 +27,7 @@ using ``conda-forge``. This will include the necessary dependencies from CUDA to
 
 .. toctree::
    :caption: Changelog
-   
+
    changelog.rst
 
 .. toctree::

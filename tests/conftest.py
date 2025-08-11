@@ -1,4 +1,4 @@
-import numpy as np  # noqa: D100, EXE002
+import numpy as np  # noqa: D100
 import pytest
 
 from pytket._tket.circuit import Circuit
@@ -20,6 +20,7 @@ def single_qubit_clifford_circuit() -> Circuit:
     c.V(0)
     return c
 
+
 @pytest.fixture
 def bell_circuit() -> tuple[Circuit, np.ndarray]:
     c = Circuit(2, 2)
@@ -28,6 +29,7 @@ def bell_circuit() -> tuple[Circuit, np.ndarray]:
     expected = np.asarray([1, 0, 0, 1]) * 1 / np.sqrt(2)
     return c, expected
 
+
 @pytest.fixture
 def test_circuit() -> Circuit:
     c = Circuit(3, 3)
@@ -35,6 +37,7 @@ def test_circuit() -> Circuit:
     c.H(0)
     c.CX(0, 1)
     return c
+
 
 @pytest.fixture
 def three_qubit_ghz_circuit() -> tuple[Circuit, np.ndarray]:
@@ -45,6 +48,7 @@ def three_qubit_ghz_circuit() -> tuple[Circuit, np.ndarray]:
     expected = np.asarray([1, 0, 0, 0, 0, 0, 0, 1]) * 1 / np.sqrt(2)
     return c, expected
 
+
 @pytest.fixture
 def four_qubit_superposition_circuit() -> tuple[Circuit, np.ndarray]:
     c = Circuit(4, 4)
@@ -52,6 +56,7 @@ def four_qubit_superposition_circuit() -> tuple[Circuit, np.ndarray]:
         c.H(i)
     expected = np.ones(16) / 4
     return c, expected
+
 
 # Group 2: Single-Qubit Non-Clifford or Parameterized Gates
 @pytest.fixture
@@ -67,6 +72,7 @@ def single_qubit_non_clifford_circuit() -> Circuit:
     c.PhasedX(0.2, 0.4, 1)
     return c
 
+
 # Group 3: Two-Qubit Entangling Gates
 @pytest.fixture
 def two_qubit_entangling_circuit() -> Circuit:
@@ -80,6 +86,7 @@ def two_qubit_entangling_circuit() -> Circuit:
     c.ZZPhase(0.4, 1, 2)
     c.ZZMax(0, 3)
     return c
+
 
 # Group 4: Miscellaneous Circuits
 @pytest.fixture
@@ -114,9 +121,7 @@ def random_line_circuit(n_qubits: int, layers: int) -> Circuit:
 
         # Layer of CX gates
         offset = np.mod(i, 2)  # Even layers connect (q0,q1), odd (q1,q2)
-        qubit_pairs = [
-            [c.qubits[i], c.qubits[i + 1]] for i in range(offset, n_qubits - 1, 2)
-        ]
+        qubit_pairs = [[c.qubits[i], c.qubits[i + 1]] for i in range(offset, n_qubits - 1, 2)]
         # Direction of each CX gate is random
         for pair in qubit_pairs:
             if np.random.rand() > 0.5:  # noqa: NPY002, PLR2004
@@ -146,6 +151,7 @@ def quantum_volume_circuit(n_qubits: int) -> Circuit:
 
     DecomposeBoxes().apply(c)
     return c
+
 
 @pytest.fixture
 def q1_empty() -> Circuit:
@@ -423,6 +429,7 @@ def q3_toffoli_box_with_implicit_swaps() -> Circuit:
 
 # Operator Fixtures
 
+
 @pytest.fixture
 def single_qubit_operator() -> QubitPauliOperator:
     """Fixture for a sample operator to test with single-qubit circuits."""
@@ -431,6 +438,7 @@ def single_qubit_operator() -> QubitPauliOperator:
             QubitPauliString({Qubit(0): Pauli.X}): 0.4,
         },
     )
+
 
 @pytest.fixture
 def two_qubit_operator() -> QubitPauliOperator:
@@ -444,6 +452,7 @@ def two_qubit_operator() -> QubitPauliOperator:
         },
     )
 
+
 @pytest.fixture
 def three_qubit_operator() -> QubitPauliOperator:
     """Fixture for an operator to test with the GHZ circuit."""
@@ -453,6 +462,7 @@ def three_qubit_operator() -> QubitPauliOperator:
             QubitPauliString({Qubit(0): Pauli.X, Qubit(1): Pauli.X, Qubit(2): Pauli.X}): 0.5,
         },
     )
+
 
 @pytest.fixture
 def four_qubit_operator() -> QubitPauliOperator:

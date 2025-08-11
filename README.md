@@ -22,20 +22,25 @@ Some useful links:
 
 `pytket-custatevec` is available for Python 3.10, 3.11 and 3.12 on Linux.
 In order to use it, you need access to a Linux machine (or WSL) with an NVIDIA GPU of
-Compute Capability +7.0 (check it [here](https://developer.nvidia.com/cuda-gpus)).
-You will need to install `cuda-toolkit` and `cuquantum-python` before `pytket-custatevec`;
-for instance, in Ubuntu 24.04:
+Compute Capability +7.0 (check it [here](https://developer.nvidia.com/cuda-gpus)) and
+have `cuda-toolkit` installed; this can be done with the command
 
 ```shell
 sudo apt install cuda-toolkit
-pip install cuquantum-python
-pip install pytket-custatevec
 ```
 
-Alternatively, you may install cuQuantum Python following the
-[instructions](https://docs.nvidia.com/cuda/cuquantum/latest/getting-started/index.html) using `conda-forge`.
-This will include the necessary dependencies from CUDA toolkit. Then, you may install
-`pytket-custatevec` using `pip`.
+You need to install `cuquantum-python` before `pytket-custatevec`.
+The recommended way to install these dependency is using conda:
+
+```shell
+conda install -c conda-forge cuquantum-python
+```
+This will automatically pull all other CUDA-related dependencies.
+
+For more details, including how to install these dependencies via pip or how to manually specify the CUDA version,
+read the [install instructions in the official cuQuantum documentation](https://docs.nvidia.com/cuda/cuquantum/latest/getting-started/index.html).
+
+
 
 
 ## Bugs, support and feature requests
@@ -61,7 +66,7 @@ tests and is accepted after review, it will be merged in.
 
 #### Docstrings
 
-We use the Google style docstrings, please see this 
+We use the Google style docstrings, please see this
 [page](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) for
 reference.
 

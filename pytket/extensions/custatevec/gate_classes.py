@@ -1,22 +1,22 @@
 import abc  # noqa: D100
 import math
-import warnings
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from cuquantum import cudaDataType
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
 
 try:
     import cupy as cp
-except ImportError:
-    warnings.warn("local settings failed to import cupy", ImportWarning, stacklevel=2)
+    from cuquantum import cudaDataType
+except ImportError as e:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(e.name)) from e
 
-import numpy as np
 from numpy.typing import DTypeLike, NDArray
 
 
 class Gate:
     """Abstract base class for quantum gates."""
+
     name: str
 
     @abc.abstractmethod
@@ -52,6 +52,7 @@ class Gate:
 
 class UnparameterizedGate(Gate):
     """Represents a quantum gate with a fixed matrix and no parameters."""
+
     _matrix: NDArray[Any]
     _qubits: int
 
@@ -111,13 +112,14 @@ class UnparameterizedGate(Gate):
         return 0
 
     @property
-    def matrix(self) -> np.ndarray:
+    def matrix(self) -> NDArray[Any]:
         """Return the matrix of the gate."""
         return self._matrix
 
 
 class ParameterizedGate(Gate):
     """Represents a quantum gate with a parameterized function."""
+
     function: Callable[[Sequence[float], DTypeLike], NDArray[Any]]
     _n_parameters: int
 
@@ -178,6 +180,7 @@ class ParameterizedGate(Gate):
 
 class CuStateVecMatrix:
     """Represents a matrix used in cuStateVec operations."""
+
     matrix: cp.ndarray
     cuda_dtype: cudaDataType
     n_qubits: int

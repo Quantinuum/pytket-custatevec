@@ -19,6 +19,7 @@ from pytket.utils.expectations import get_operator_expectation_value
 # === TESTS FOR STATEVECTOR AND SHOT-BASED BACKENDS ===
 # =====================================================
 
+
 def test_initial_statevector() -> None:
     """Test the initial_statevector function for all possible types and different qubit numbers.
 
@@ -36,7 +37,7 @@ def test_initial_statevector() -> None:
         "zero": lambda n: np.eye(1, 2**n, 0, dtype=np.complex128).ravel(),
         "uniform": lambda n: np.full(2**n, 1 / np.sqrt(2**n), dtype=np.complex128),
         "ghz": lambda n: np.array(
-            [1 / np.sqrt(2) if i in [0, 2**n - 1] else 0 for i in range(2**n)],
+            [1 / np.sqrt(2) if i in (0, 2**n - 1) else 0 for i in range(2**n)],
             dtype=np.complex128,
         ),
         "w": lambda n: np.array(
@@ -53,19 +54,21 @@ def test_initial_statevector() -> None:
                 sv = initial_statevector(
                     libhandle,
                     n,
-                    state_name, # type: ignore[no-untyped-call]
+                    state_name,  # type: ignore[no-untyped-call]
                     dtype=cudaDataType.CUDA_C_64F,
                 )
                 generated_state = sv.array
                 expected_state = state_func(n)
                 assert np.allclose(
-                    generated_state, expected_state,
+                    generated_state,
+                    expected_state,
                 ), f"Mismatch for {state_name} with {n} qubits"
 
 
 # =====================================
 # === TESTS FOR STATEVECTOR BACKEND ===
 # =====================================
+
 
 # TODO: Need to add more gates to test all circuits of cuTensorNet
 @pytest.mark.parametrize(
@@ -113,7 +116,8 @@ def test_initial_statevector() -> None:
     ],
 )
 def test_custatevecstate_state_vector_vs_aer_and_qulacs(
-    statevector_circuit_fixture: str, request: pytest.FixtureRequest,
+    statevector_circuit_fixture: str,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Test the CuStateVecStateBackend against AerState and Qulacs Backends for various quantum circuits.
 
@@ -158,6 +162,7 @@ def test_custatevecstate_state_vector_vs_aer_and_qulacs(
         pytket_result = circuit.get_statevector()
         assert np.allclose(cu_result, pytket_result)
 
+
 @pytest.mark.parametrize(
     ("statevector_circuit_fixture", "operator_fixture"),
     [
@@ -181,21 +186,23 @@ def test_custatevecstate_state_vector_vs_aer_and_qulacs(
         ("q2_x1cx10x1", "two_qubit_operator"),
         ("q2_x0cx01cx10", "two_qubit_operator"),
         ("q2_v0cx01cx10", "two_qubit_operator"),
-        # ("q2_hadamard_test", "two_qubit_operator"), #TODO: Add CrX gate
+        # ("q2_hadamard_test", "two_qubit_operator"), #TODO: Add CrX gate #noqa: ERA001
         ("q2_lcu1", "two_qubit_operator"),
         ("q2_lcu2", "two_qubit_operator"),
         ("q2_lcu3", "two_qubit_operator"),
         ("q3_v0cx02", "three_qubit_operator"),
         ("q3_cx01cz12x1rx0", "three_qubit_operator"),
         ("q4_multicontrols", "four_qubit_operator"),
-        # ("q4_with_creates", "four_qubit_operator"), #TODO: Add TK2 gate
-        # ("q5_h0s1rz2ry3tk4tk13", "three_qubit_operator"), #TODO: Add TK2 gate
+        # ("q4_with_creates", "four_qubit_operator"), #TODO: Add TK2 gate #noqa: ERA001
+        # ("q5_h0s1rz2ry3tk4tk13", "three_qubit_operator"), #TODO: Add TK2 gate #noqa: ERA001
         ("q8_x0h2v5z6", "four_qubit_operator"),
         ("q5_line_circ_30_layers", "three_qubit_operator"),
     ],
 )
 def test_custatevecstate_expectation_value_vs_aer_and_qulacs(
-    statevector_circuit_fixture: str, operator_fixture: str, request: pytest.FixtureRequest,
+    statevector_circuit_fixture: str,
+    operator_fixture: str,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Test the CuStateVecShotsBackend against AerState and Qulacs Backends for various quantum circuits.
 
@@ -243,6 +250,7 @@ def test_custatevecstate_expectation_value_vs_aer_and_qulacs(
     aer_state = aer_backend.get_result(aer_handle).get_state()
     assert np.allclose(operator.state_expectation(aer_state), cu_expectation)
 
+
 def test_custatevecstate_basisorder() -> None:
     """Test the basis order of the CuStateVecStateBackend."""
     c = Circuit(2)
@@ -254,6 +262,7 @@ def test_custatevecstate_basisorder() -> None:
     cu_result = cu_backend.get_result(cu_handle[0])
     assert np.allclose(cu_result.get_state(), np.asarray([0, 1, 0, 0]))
     assert np.allclose(cu_result.get_state(basis=BasisOrder.dlo), np.asarray([0, 0, 1, 0]))
+
 
 def test_custatevecstate_implicit_perm() -> None:
     """Test the implicit qubit permutation in CuStateVecStateBackend."""
@@ -269,14 +278,16 @@ def test_custatevecstate_implicit_perm() -> None:
     assert c.implicit_qubit_permutation() != c1.implicit_qubit_permutation()
     h, h1 = b.process_circuits([c, c1])
     r, r1 = b.get_results([h, h1])
-    for bo in [BasisOrder.ilo, BasisOrder.dlo]:
+    for bo in (BasisOrder.ilo, BasisOrder.dlo):
         s = r.get_state(basis=bo)
         s1 = r1.get_state(basis=bo)
         assert np.allclose(s, s1)
 
+
 # ====================================
 # === TESTS FOR SHOT-BASED BACKEND ===
 # ====================================
+
 
 @pytest.mark.parametrize(
     ("sampler_circuit_fixture", "operator_fixture"),
@@ -301,21 +312,23 @@ def test_custatevecstate_implicit_perm() -> None:
         ("q2_x1cx10x1", "two_qubit_operator"),
         ("q2_x0cx01cx10", "two_qubit_operator"),
         ("q2_v0cx01cx10", "two_qubit_operator"),
-        # ("q2_hadamard_test", "two_qubit_operator"), #TODO: Add CrX gate
+        # ("q2_hadamard_test", "two_qubit_operator"), #TODO: Add CrX gate # noqa: ERA001
         ("q2_lcu1", "two_qubit_operator"),
         ("q2_lcu2", "two_qubit_operator"),
         ("q2_lcu3", "two_qubit_operator"),
         ("q3_v0cx02", "three_qubit_operator"),
         ("q3_cx01cz12x1rx0", "three_qubit_operator"),
         ("q4_multicontrols", "four_qubit_operator"),
-        # ("q4_with_creates", "four_qubit_operator"), #TODO: Add TK2 gate
-        # ("q5_h0s1rz2ry3tk4tk13", "three_qubit_operator"), #TODO: Add TK2 gate
+        # ("q4_with_creates", "four_qubit_operator"), #TODO: Add TK2 gate # noqa: ERA001
+        # ("q5_h0s1rz2ry3tk4tk13", "three_qubit_operator"), #TODO: Add TK2 gate # noqa: ERA001
         ("q8_x0h2v5z6", "four_qubit_operator"),
         ("q5_line_circ_30_layers", "three_qubit_operator"),
     ],
 )
 def test_custatevecshots_expectation_value_vs_qulacs(
-    sampler_circuit_fixture: str, operator_fixture: str, request: pytest.FixtureRequest,
+    sampler_circuit_fixture: str,
+    operator_fixture: str,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Test the CuStateVecShotsBackend against Qulacs Backends for various quantum circuits.
 
@@ -342,6 +355,7 @@ def test_custatevecshots_expectation_value_vs_qulacs(
 
     assert np.isclose(cu_expectation, qulacs_expectation, atol=0.1)
 
+
 def test_custatevecshots_basisorder() -> None:
     """Test the CuStateVecShotsBackend for basis order consistency in sampling."""
     c = Circuit(2, 2)
@@ -353,6 +367,7 @@ def test_custatevecshots_basisorder() -> None:
     cu_result = cu_backend.get_result(cu_handle[0])
     assert cu_result.get_counts() == {(0, 1): 10}
     assert cu_result.get_counts(basis=BasisOrder.dlo) == {(1, 0): 10}
+
 
 def test_custatevecshots_partial_measurement() -> None:
     """Test the CuStateVecShotsBackend with partial measurement."""

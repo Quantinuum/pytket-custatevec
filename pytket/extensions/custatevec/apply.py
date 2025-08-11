@@ -1,9 +1,17 @@
-from collections.abc import Sequence  # noqa: D100
+"""Functions for wrapping the application custatevec functions to pytket-custatevec specific class instances."""
 
-import cuquantum.custatevec as cusv
+from collections.abc import Sequence
+
 import numpy as np
-from cuquantum import ComputeType
-from cuquantum.custatevec import Pauli as cusvPauli  # type: ignore[import-error]
+
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
+
+try:
+    import cuquantum.custatevec as cusv
+    from cuquantum import ComputeType
+    from cuquantum.custatevec import Pauli as cusvPauli  # type: ignore[import-error]
+except ImportError as e:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(e.name)) from e
 
 from pytket.circuit import OpType
 
@@ -131,7 +139,7 @@ def pytket_paulis_to_custatevec_paulis(
     # is in multiples of π, so we convert it to radians. Additionally,
     # we apply a factor of 0.5 with a negative sign to render the
     # Pauli rotation an actual rotation gate in the conventional definition.
-    angle_radians = - angle_pi * 0.5 * np.pi
+    angle_radians = -angle_pi * 0.5 * np.pi
     return paulis, angle_radians
 
 
@@ -179,7 +187,7 @@ def apply_pauli_rotation(
         handle=handle.handle,
         sv=statevector.array.data.ptr,
         sv_data_type=statevector.cuda_dtype,
-        n_index_bits=statevector.n_qubits, # TOTAL number of qubits in the statevector
+        n_index_bits=statevector.n_qubits,  # TOTAL number of qubits in the statevector
         theta=angle,
         paulis=paulis,
         targets=targets,

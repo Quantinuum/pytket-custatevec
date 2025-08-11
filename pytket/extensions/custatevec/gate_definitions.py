@@ -1,16 +1,18 @@
-import warnings  # noqa: D100
 from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
-from cuquantum.bindings._utils import cudaDataType
-from numpy.typing import DTypeLike, NDArray
-from sympy import Expr
+
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
 
 try:
     import cupy as cp
-except ImportError:
-    warnings.warn("local settings failed to import cupy", ImportWarning, stacklevel=2)
+    from cuquantum.bindings._utils import cudaDataType
+except ImportError as e:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(e.name)) from e
+
+from numpy.typing import DTypeLike, NDArray
+from sympy import Expr
 
 from pytket.extensions.custatevec.gate_classes import (
     CuStateVecMatrix,
@@ -62,14 +64,12 @@ _SWAP = np.array(
     ],
 )
 
-SWAP = UnparameterizedGate("SWAP", _SWAP) # invariant under qubit permutation
+SWAP = UnparameterizedGate("SWAP", _SWAP)  # invariant under qubit permutation
+
 
 def _Rx(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     param_pi_2 = params[0] * np.pi / 2
-    return (
-        np.cos(param_pi_2, dtype=dtype) * _I
-        - np.sin(param_pi_2, dtype=dtype) * _X * 1.0j
-    )
+    return np.cos(param_pi_2, dtype=dtype) * _I - np.sin(param_pi_2, dtype=dtype) * _X * 1.0j
 
 
 Rx = ParameterizedGate("Rx", _Rx, 1, 1)
@@ -77,10 +77,7 @@ Rx = ParameterizedGate("Rx", _Rx, 1, 1)
 
 def _Ry(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     param_pi_2 = params[0] * np.pi / 2
-    return (
-        np.cos(param_pi_2, dtype=dtype) * _I
-        - np.sin(param_pi_2, dtype=dtype) * _Y * 1.0j
-    )
+    return np.cos(param_pi_2, dtype=dtype) * _I - np.sin(param_pi_2, dtype=dtype) * _Y * 1.0j
 
 
 Ry = ParameterizedGate("Ry", _Ry, 1, 1)
@@ -88,23 +85,18 @@ Ry = ParameterizedGate("Ry", _Ry, 1, 1)
 
 def _Rz(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     param_pi_2 = params[0] * np.pi / 2
-    return (
-        np.cos(param_pi_2, dtype=dtype) * _I
-        - np.sin(param_pi_2, dtype=dtype) * _Z * 1.0j
-    )
+    return np.cos(param_pi_2, dtype=dtype) * _I - np.sin(param_pi_2, dtype=dtype) * _Z * 1.0j
 
 
 Rz = ParameterizedGate("Rz", _Rz, 1, 1)
 
+
 def _TK1(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
-    return (
-        _Rz([params[0]], dtype=dtype)
-        @ _Rx([params[1]], dtype=dtype)
-        @ _Rz([params[2]], dtype=dtype)
-    )
+    return _Rz([params[0]], dtype=dtype) @ _Rx([params[1]], dtype=dtype) @ _Rz([params[2]], dtype=dtype)
 
 
 TK1 = ParameterizedGate("TK1", _TK1, 1, 3)
+
 
 def _U3(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
     return (
@@ -209,11 +201,7 @@ ZZMax = UnparameterizedGate("ZZMax", _ZZPhase([0.5], None))
 
 
 def _PhasedX(params: Sequence[float], dtype: DTypeLike) -> NDArray[Any]:
-    return (
-        _Rz([params[1]], dtype=dtype)
-        @ _Rx([params[0]], dtype=dtype)
-        @ _Rz([-params[1]], dtype=dtype)
-    )
+    return _Rz([params[1]], dtype=dtype) @ _Rx([params[0]], dtype=dtype) @ _Rz([-params[1]], dtype=dtype)
 
 
 PhasedX = ParameterizedGate("PhasedX", _PhasedX, 1, 2)
@@ -301,7 +289,8 @@ def get_gate_matrix(
     try:
         gate = gate_dict[gate_name]
         return CuStateVecMatrix(
-            cp.array(gate.get(parameters, dtype), dtype=dtype), cuda_dtype,
+            cp.array(gate.get(parameters, dtype), dtype=dtype),
+            cuda_dtype,
         )
     except KeyError:
         raise ValueError(f"Gate {gate_name} not found")
