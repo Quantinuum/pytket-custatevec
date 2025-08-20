@@ -89,6 +89,20 @@ def global_phase_circuit() -> tuple[Circuit, np.ndarray]:
     expected = np.asarray([1, 0]) * np.exp(1j * np.pi * 0.5)
     return c, expected
 
+@pytest.fixture
+def circuit_with_adjoint_gates() -> Circuit:
+    """Circuit with adjoint gates."""
+    c = Circuit(3, 3)
+    c.H(0)
+    c.Sdg(1)
+    c.Tdg(2)
+    c.CSdg(0, 1)
+    c.Vdg(0)
+    c.SXdg(2)
+    c.Vdg(2)
+    c.CSXdg(1, 2)
+    return c
+
 def random_line_circuit(n_qubits: int, layers: int) -> Circuit:
     """Random circuit with line connectivity."""
     c = Circuit(n_qubits)

@@ -252,6 +252,7 @@ _control_to_gate_map: dict[str, tuple[str, int]] = {
     "CZ": ("Z", 1),
     "CH": ("H", 1),
     "CV": ("V", 1),
+    "CS": ("S", 1),
     "CSX": ("SX", 1),
     "CCX": ("X", 2),
     "CSWAP": ("SWAP", 1),
