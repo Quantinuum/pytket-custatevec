@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Backend for utilising the cuQuantum simulator directly from pytket"""
+"""Backend for utilising the cuQuantum simulator directly from pytket."""
 
-from .custatevec_backend import CuStateVecStateBackend, CuStateVecShotsBackend
+from .custatevec_backend import CuStateVecShotsBackend as CuStateVecShotsBackend
+from .custatevec_backend import CuStateVecStateBackend as CuStateVecStateBackend

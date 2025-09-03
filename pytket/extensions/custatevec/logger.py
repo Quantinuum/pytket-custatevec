@@ -23,8 +23,11 @@ def set_logger(
     logger.setLevel(level)
     logger.propagate = False
 
-    handler: logging.StreamHandler
-    handler = logging.StreamHandler() if file is None else logging.FileHandler(file)
+    handler: logging.Handler
+    if file is None:  # noqa: SIM108, otherwise mypy complains
+        handler = logging.StreamHandler()
+    else:
+        handler = logging.FileHandler(file)
     handler.setLevel(level)
     formatter = logging.Formatter(fmt, datefmt="%H:%M:%S")
     handler.setFormatter(formatter)

@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
 from typing_extensions import Self
@@ -24,14 +23,15 @@ if TYPE_CHECKING:
 
     from cupy.cuda import Stream
 
+
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
+
 try:
     import cupy as cp
-except ImportError:
-    warnings.warn("failed to import cupy", ImportWarning, stacklevel=2)
-try:
     import cuquantum.custatevec as cusv
-except ImportError:
-    warnings.warn("failed to import cuquantum", ImportWarning, stacklevel=2)
+except ImportError as _cuda_import_err:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
+
 
 class CuStateVecHandle:
     """Initialise the cuStateVec library with automatic workspace memory management.
@@ -64,10 +64,10 @@ class CuStateVecHandle:
         self.dev = dev
         self.device_id = dev.id
 
-        self._handle = cusv.create() # type: ignore[no-untyped-call]
+        self._handle = cusv.create()  # type: ignore[no-untyped-call]
 
         def malloc(size: int, stream: Stream) -> int:
-            return cp.cuda.runtime.mallocAsync(size, stream)
+            return int(cp.cuda.runtime.mallocAsync(size, stream))
 
         def free(ptr: int, stream: Stream) -> None:
             cp.cuda.runtime.freeAsync(ptr, stream)
@@ -75,8 +75,8 @@ class CuStateVecHandle:
         handler = (malloc, free, "memory_handler")
         stream = cp.cuda.Stream()
         self.stream = stream
-        cusv.set_device_mem_handler(self._handle, handler) # type: ignore[no-untyped-call]
-        cusv.set_stream(self._handle, stream.ptr) # type: ignore[no-untyped-call]
+        cusv.set_device_mem_handler(self._handle, handler)  # type: ignore[no-untyped-call]
+        cusv.set_stream(self._handle, stream.ptr)  # type: ignore[no-untyped-call]
 
     @property
     def handle(self) -> int:
@@ -90,7 +90,7 @@ class CuStateVecHandle:
                 "The cuStateVec library handle is out of scope.",
                 "See the documentation of CuStateVecHandle.",
             )
-        return self._handle
+        return int(self._handle)
 
     def destroy(self) -> None:
         """Destroys the memory handle, releasing memory.
@@ -98,7 +98,7 @@ class CuStateVecHandle:
         Only call this method if you are initialising a ``CuStateVecHandle`` outside
         a ``with CuStateVecHandle() as libhandle`` statement.
         """
-        cusv.destroy(self._handle) # type: ignore[no-untyped-call]
+        cusv.destroy(self._handle)  # type: ignore[no-untyped-call]
         self._is_destroyed = True
 
     def __enter__(self) -> Self:

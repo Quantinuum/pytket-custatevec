@@ -1,3 +1,5 @@
+"""Module for testing miscellaneous utility functions."""
+
 import numpy as np
 
 from pytket.architecture import Architecture
@@ -28,9 +30,8 @@ def test_remove_meas_and_implicit_swaps() -> None:
         mapper = DefaultMappingPass(arc)
         cu = CompilationUnit(circ)
         mapper.apply(cu)
-        circ1 = cu.circuit
 
-        return circ1
+        return cu.circuit
 
     original_circ = circuit_with_measurement()
     # Remove measurements
@@ -46,11 +47,13 @@ def test_remove_meas_and_implicit_swaps() -> None:
 
     assert np.allclose(sv_original, sv_clean, atol=1e-8), "Statevectors do not match"
 
+
 def test_remove_meas_and_implicit_swaps_mid_circuit() -> None:
     """Test the _remove_meas_and_implicit_swaps function with mid-circuit measurements.
 
     It should throw an error if the circuit has mid-circuit measurements.
     """
+
     def circuit_with_mid_circuit_measurements() -> Circuit:
         """Circuit with mid-circuit measurement."""
         circuit = Circuit(1, 1)
@@ -65,4 +68,4 @@ def test_remove_meas_and_implicit_swaps_mid_circuit() -> None:
     except ValueError as e:
         assert str(e) == "Circuit contains a mid-circuit measurement"  # noqa: PT017
     else:
-        raise AssertionError("Expected ValueError for mid-circuit measurements not raised.")  # noqa: EM101, TRY003
+        raise AssertionError("Expected ValueError for mid-circuit measurements not raised.")

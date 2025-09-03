@@ -30,7 +30,8 @@ repos:
     hooks:
       - id: refurb
 
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.385
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2  # pick a stable mypy release
     hooks:
-      - id: pyright
+      - id: mypy
+        args: ["--explicit-package-bases",  "--ignore-missing-imports"]

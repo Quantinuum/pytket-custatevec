@@ -51,7 +51,6 @@ lint.select = [
   "SLOT", # flake8-slots
   "T10",  # flake8-debugger
   # "T20",  # flake8-print
-  "TC",   # flake8-type-checking
   "TD",   # flake8-todos
   "TID",  # flake8-tidy-imports
   "TRY",  # tryceratops
@@ -59,7 +58,7 @@ lint.select = [
   "YTT",  # flake8-2020
 ]
 
-ignore = [
+lint.ignore = [
     "TRY003",  # Avoid using bare `except` clauses.
     "EM101",  # Logging statement uses `f-string` instead of lazy formatting.
     "EM102",  # String interpolation should be delayed to logging call.
@@ -73,6 +72,8 @@ ignore = [
     "FBT001",  # Boolean positional value in function call.
     "FBT002",  # Boolean default value in function definition.
     "EXE002",  # Shebang is present but the file is not marked as executable.
+    "ANN101", # Checks that instance method self arguments have type annotations.
+    "PLC0414", # Checks for import aliases that do not rename the original package.
 ]
 
 [lint.per-file-ignores]
@@ -85,6 +86,8 @@ ignore = [
     "S101",  # Use of `assert` detected.
     "D103",  # Missing docstring in public function.
     "N806",  # Variable in function should be lowercase.
+    "ERA001", # Commented code
+    "RUF100", # Unused noqa directive
 ]
 
 [lint.pydocstyle]

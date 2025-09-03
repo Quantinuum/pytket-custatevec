@@ -1,4 +1,4 @@
-# Copyright Quantinuum  # noqa: D100
+# Copyright Quantinuum
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Module with miscellaneous utility functions and constants."""
 
 from pytket._tket.circuit import Circuit
 from pytket._tket.unit_id import Bit
 from pytket.circuit import OpType, Qubit
+
+INSTALL_CUDA_ERROR_MESSAGE = r"""
+No installation of {} found!
+
+`pytket-custatevec` is available for Python 3.10, 3.11 and 3.12 on Linux.
+In order to use it, you need access to a Linux machine (or WSL) with an NVIDIA GPU of
+Compute Capability +7.0 (check it https://developer.nvidia.com/cuda-gpus) and
+have `cuda-toolkit` installed; this can be done with the command
+
+sudo apt install cuda-toolkit
+
+You need to install `cuquantum-python` before `pytket-custatevec`.
+The recommended way to install these dependency is using conda:
+
+conda install -c conda-forge cuquantum-python
+
+This will automatically pull all other CUDA-related dependencies.
+
+For more details, including how to install these dependencies via pip or how to manually specify the CUDA version,
+read the install instructions in the official cuQuantum documentation https://docs.nvidia.com/cuda/cuquantum/latest/getting-started/index.html.
+"""
 
 
 def _remove_meas_and_implicit_swaps(circ: Circuit) -> tuple[Circuit, dict[Qubit, Bit]]:

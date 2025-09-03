@@ -153,8 +153,9 @@ class _CuStateVecBaseBackend(Backend):
     def process_circuits(  # noqa: D417
         self,
         circuits: Circuit | Sequence[Circuit],
-        n_shots: int | Sequence[int] | None = None,
-        valid_check: bool = True,
+        n_shots: int,
+        seed: int,
+        valid_check: bool,
         **kwargs: KwargTypes,
     ) -> list[ResultHandle]:
         """Submits circuits to the backend for running.
@@ -203,7 +204,8 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
     def process_circuits(  # noqa: D417
         self,
         circuits: Circuit | Sequence[Circuit],
-        n_shots: int | Sequence[int] | None = None,  # noqa: ARG002
+        n_shots: int = 0,  # noqa: ARG002
+        seed: int = 0,  # noqa: ARG002
         valid_check: bool = True,
         **kwargs: KwargTypes,  # noqa: ARG002
     ) -> list[ResultHandle]:
@@ -215,7 +217,9 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
         Args:
             circuits: List of circuits to be submitted.
             n_shots: Number of shots in case of shot-based calculation.
-                This should be ``None``, since this backend does not support shots.
+                This is unused, since this backend does not support shots.
+            seed: Seed for random number generation.
+                This is unused, since this backend does not support shots.
             valid_check: Whether to check for circuit correctness.
 
         Returns:
@@ -304,7 +308,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         self,
         circuits: Circuit | Sequence[Circuit],
         n_shots: int,
-        seed: int | None = 4,
+        seed: int = 4,  # type: ignore[override]
         valid_check: bool = True,
         **kwargs: KwargTypes,  # noqa: ARG002
     ) -> list[ResultHandle]:
@@ -386,7 +390,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
             # Reformat bit_strings from list of 64-bit signed integer (memory-efficient
             # way for custatevec to save many shots) to list of binaries for OutcomeArray
             bit_strings_binary = [format(s, f"0{len(measured_qubits)}b") for s in bit_strings_int64.flatten().tolist()]
-            bit_strings_binary = [tuple(map(int, binary)) for binary in bit_strings_binary]
+            bit_strings_binary = [tuple(map(int, binary)) for binary in bit_strings_binary]  # type: ignore[misc]
 
             # In order to be able to use the BackendResult functionality,
             # we only pass the array of the statevector to BackendResult

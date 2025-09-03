@@ -16,12 +16,18 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Literal
 
-import cupy as cp
-import cuquantum.custatevec as cusv
+from .utils import INSTALL_CUDA_ERROR_MESSAGE
+
+try:
+    import cupy as cp
+    import cuquantum.custatevec as cusv
+    from cuquantum import ComputeType
+    from cuquantum.bindings._utils import cudaDataType
+    from cuquantum.bindings.custatevec import StateVectorType
+except ImportError as _cuda_import_err:
+    raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
+
 import numpy as np
-from cuquantum import ComputeType
-from cuquantum.bindings._utils import cudaDataType
-from cuquantum.bindings.custatevec import StateVectorType
 
 from pytket.circuit import OpType, Qubit
 from pytket.extensions.custatevec.gate_classes import CuStateVecMatrix
@@ -75,7 +81,7 @@ def initial_statevector(
     d_sv = cp.empty(d, dtype=cp.complex128)
 
     with handle.stream:
-        cusv.initialize_state_vector( # type: ignore  # noqa: PGH003
+        cusv.initialize_state_vector(  # type: ignore  # noqa: PGH003
             handle=handle.handle,
             sv=d_sv.data.ptr,
             sv_data_type=cudaDataType.CUDA_C_64F,
@@ -135,9 +141,7 @@ def run_circuit(
     # Now all operations by the cuStateVec library will act on the correct control and target qubits.
     # Note: Any reordering needs to be done inside run_circuit
     # since get_operator_expectation_value just calls the run_circuit function directly.
-    _qubit_idx_map: dict[Qubit, int] = {
-        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
-    }
+    _qubit_idx_map: dict[Qubit, int] = {q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))}
     # Remove end-of-circuit measurements and keep track of them separately
     # It also resolves implicit SWAPs
     _measurements: dict[Qubit, Bit]
@@ -188,11 +192,11 @@ def run_circuit(
                 statevector=state,
                 targets=targets,
                 controls=controls,
-                control_bit_values=[1]
-                * n_controls,  # what value does each of the control qubits need to have to activate the gate
-                adjoint=adjoint, # control_bit_values = [1,...,1] means each gate is applied only when the control qubit is in state 1
+                control_bit_values=[1] * n_controls,  # what value does each of the control qubits need to have to activate the gate
+                adjoint=adjoint,  # control_bit_values = [1,...,1] means each gate is applied only when the control qubit is in state 1
             )
     handle.stream.synchronize()
+
 
 def compute_expectation(
     handle: CuStateVecHandle,
@@ -234,9 +238,7 @@ def compute_expectation(
         cp.array(matrix_array, dtype=dtype),
         matrix_dtype,
     )
-    _qubit_idx_map: dict[Qubit, int] = {
-        q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))
-    }
+    _qubit_idx_map: dict[Qubit, int] = {q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))}
     # Match cuStateVec's little-endian convention: Sort basis bits in LSB-to-MSB order
     # Basis bits: indices of the qubits you want the operator to act upon
     basis_bits = [_qubit_idx_map[x] for x in operator.all_qubits]
