@@ -15,9 +15,6 @@ a high-performance library aimed at quantum circuit simulations on the NVIDIA GP
 expectation values to be simulated using `cuStateVec` via an interface to
 [cuQuantum Python](https://docs.nvidia.com/cuda/cuquantum/latest/python/index.html).
 
-Some useful links:
-- [API Documentation](https://docs.quantinuum.com/tket/extensions/pytket-custatevec/)
-
 ## Getting started
 
 `pytket-custatevec` is available for Python 3.10, 3.11 and 3.12 on Linux.
@@ -41,8 +38,6 @@ For more details, including how to install these dependencies via pip or how to 
 read the [install instructions in the official cuQuantum documentation](https://docs.nvidia.com/cuda/cuquantum/latest/getting-started/index.html).
 
 
-
-
 ## Bugs, support and feature requests
 
 Please file bugs and feature requests on the Github
@@ -64,37 +59,25 @@ tests and is accepted after review, it will be merged in.
 
 ### Code style
 
+Code style can be checked locally using [pre-commit](https://pre-commit.com/) hooks; run pre-commit 
+before commiting your changes and opening a pull request by executing
+```
+pre-commit run
+```
+This will automatically:
+* Format code using [ruff](https://pypi.org/project/ruff/) with default options.
+* Do static type checking using [mypy](https://mypy.readthedocs.io/en/stable/).
+* Lint using [ruff](https://pypi.org/project/ruff/) to check compliance
+with a set of style requirements (listed in `ruff.toml`).
+
+Compliance with the above checks is checked by continuous integration before a pull request
+ can be merged. 
+
 #### Docstrings
 
 We use the Google style docstrings, please see this
 [page](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) for
 reference.
-
-#### Formatting
-
-All code should be formatted using [ruff](https://pypi.org/project/ruff/), with default options.
-
-#### Type annotation
-
-On the CI, [pyright](https://mypy.readthedocs.io/en/stable/) is used as a static
-type checker and all submissions must pass its checks. You should therefore run
-`mypy` locally on any changed files before submitting a PR. Because of the way
-extension modules embed themselves into the `pytket` namespace this is a little
-complicated, but it should be sufficient to run the script `mypy-check`
-and passing as a single argument the root directory of the module to test. The directory
-path should end with a `/`. For example, to run mypy on all Python files in this
-repository, when in the root folder, run:
-
-```shell
-./mypy-check ./
-```
-The script requires `mypy` 0.800 or above.
-
-#### Linting
-
-We use [ruff](https://pypi.org/project/ruff/) on the CI to check compliance
-with a set of style requirements (listed in `ruff.toml`). You should run
-`ruff` over any changed files before submitting a PR.
 
 ### Tests
 
