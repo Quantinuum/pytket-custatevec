@@ -152,10 +152,9 @@ class _CuStateVecBaseBackend(Backend):
     @abstractmethod
     def process_circuits(  # noqa: D417
         self,
-        circuits: Circuit | Sequence[Circuit],
-        n_shots: int,
-        seed: int,
-        valid_check: bool,
+        circuits: Sequence[Circuit],
+        n_shots: int | Sequence[int] | None = None,
+        valid_check: bool = True,
         **kwargs: KwargTypes,
     ) -> list[ResultHandle]:
         """Submits circuits to the backend for running.
@@ -197,15 +196,14 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
             device_name="NVIDIA GPU",
             version=__extension_name__ + "==" + __extension_version__,
             # All currently implemented gates including controlled gates
-            gate_set={gate.name for gate in gate_list}.union(_control_to_gate_map.keys()),  # type: ignore[no-untyped-call]
+            gate_set={gate.name for gate in gate_list}.union(_control_to_gate_map.keys()),  # type: ignore[arg-type]
             misc={"characterisation": None},
         )
 
     def process_circuits(  # noqa: D417
         self,
-        circuits: Circuit | Sequence[Circuit],
-        n_shots: int = 0,  # noqa: ARG002
-        seed: int = 0,  # noqa: ARG002
+        circuits: Sequence[Circuit],
+        n_shots: int | Sequence[int] | None = None,  # noqa: ARG002
         valid_check: bool = True,
         **kwargs: KwargTypes,  # noqa: ARG002
     ) -> list[ResultHandle]:
@@ -306,11 +304,10 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
 
     def process_circuits(  # noqa: D417
         self,
-        circuits: Circuit | Sequence[Circuit],
-        n_shots: int,
-        seed: int = 4,  # type: ignore[override]
+        circuits: Sequence[Circuit],
+        n_shots: int | Sequence[int] | None = None,
         valid_check: bool = True,
-        **kwargs: KwargTypes,  # noqa: ARG002
+        **kwargs: KwargTypes,
     ) -> list[ResultHandle]:
         """Submits circuits to the backend for running and returns result handles.
 
@@ -362,6 +359,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 bit_strings_int64 = np.empty((n_shots, 1), dtype=np.int64)  # needs to be int64
 
                 # Generate random numbers for sampling
+                seed = kwargs.get("seed")
                 rng = np.random.default_rng(seed)
                 randnums = rng.random(n_shots, dtype=np.float64).tolist()
 

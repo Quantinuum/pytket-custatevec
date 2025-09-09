@@ -26,7 +26,7 @@ def test_remove_meas_and_implicit_swaps() -> None:
         circ.measure_all()
 
         n = [Node("n", i) for i in range(5)]
-        arc = Architecture([[n[0], n[1]], [n[1], n[2]], [n[2], n[3]], [n[3], n[4]]])
+        arc = Architecture([(n[0], n[1]), (n[1], n[2]), (n[2], n[3]), (n[3], n[4])])
         mapper = DefaultMappingPass(arc)
         cu = CompilationUnit(circ)
         mapper.apply(cu)
