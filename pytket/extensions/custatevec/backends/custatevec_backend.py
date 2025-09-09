@@ -339,8 +339,10 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
             device_name="NVIDIA GPU",
             version=__extension_name__ + "==" + __extension_version__,
             # All currently implemented gates including controlled gates
-            gate_set=({OpType[g.name] for g in gate_list if g.name in OpType.__members__}
-                  | {OpType[name] for name in _control_to_gate_map if name in OpType.__members__}),
+            gate_set=(
+                {OpType[g.name] for g in gate_list if g.name in OpType.__members__}
+                | {OpType[name] for name in _control_to_gate_map if name in OpType.__members__}
+            ),
             misc={"characterisation": None},
         )
 
