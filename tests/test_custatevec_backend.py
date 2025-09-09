@@ -138,7 +138,7 @@ def test_custatevecstate_state_vector_vs_aer_and_qulacs(
 
     cu_backend = CuStateVecStateBackend()
     cu_circuit = cu_backend.get_compiled_circuit(circuit)
-    cu_handle = cu_backend.process_circuits(cu_circuit)
+    cu_handle = cu_backend.process_circuit(cu_circuit)
     cu_result = cu_backend.get_result(cu_handle[0]).get_state()
 
     if expected is not None:
@@ -258,7 +258,7 @@ def test_custatevecstate_basisorder() -> None:
 
     cu_backend = CuStateVecStateBackend()
     c = cu_backend.get_compiled_circuit(c)
-    cu_handle = cu_backend.process_circuits(c)
+    cu_handle = cu_backend.process_circuit(c)
     cu_result = cu_backend.get_result(cu_handle[0])
     assert np.allclose(cu_result.get_state(), np.asarray([0, 1, 0, 0]))
     assert np.allclose(cu_result.get_state(basis=BasisOrder.dlo), np.asarray([0, 0, 1, 0]))

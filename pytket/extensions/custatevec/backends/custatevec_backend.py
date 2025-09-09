@@ -150,6 +150,32 @@ class _CuStateVecBaseBackend(Backend):
         raise CircuitNotRunError(handle)
 
     @abstractmethod
+    def process_circuit(  # noqa: D417
+        self,
+        circuit: Circuit,
+        n_shots: int | None = None,
+        valid_check: bool = True,
+        **kwargs: KwargTypes,
+    ) -> ResultHandle:
+        """Submits a circuit to the backend for running.
+
+        The result will be stored in the backend's result cache to be retrieved by the
+        corresponding get_<data> method.
+
+        Args:
+            circuit: Circuit to be submitted.
+            n_shots: Number of shots in case of shot-based calculation.
+            valid_check: Whether to check for circuit correctness.
+
+        Returns:
+            Result handle object.
+
+        Raises:
+            TypeError: If global phase is dependent on a symbolic parameter.
+        """
+        ...
+
+    @abstractmethod
     def process_circuits(  # noqa: D417
         self,
         circuits: Sequence[Circuit],
@@ -199,6 +225,18 @@ class CuStateVecStateBackend(_CuStateVecBaseBackend):
             gate_set={gate.name for gate in gate_list}.union(_control_to_gate_map.keys()),  # type: ignore[arg-type]
             misc={"characterisation": None},
         )
+
+    def process_circuit(
+        self,
+        circuit: Circuit,
+        n_shots: int | None = None,
+        valid_check: bool = True,
+        **kwargs: KwargTypes,
+    ) -> ResultHandle:
+        """Submits circuits to the backend for running."""
+        return self.process_circuits(
+            [circuit], n_shots=n_shots, valid_check=valid_check, **kwargs,
+        )[0]
 
     def process_circuits(  # noqa: D417
         self,
@@ -302,6 +340,18 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
             misc={"characterisation": None},
         )
 
+    def process_circuit(
+        self,
+        circuit: Circuit,
+        n_shots: int | None = None,
+        valid_check: bool = True,
+        **kwargs: KwargTypes,
+    ) -> ResultHandle:
+        """Submits circuits to the backend for running."""
+        return self.process_circuits(
+            [circuit], n_shots=n_shots, valid_check=valid_check, **kwargs,
+        )[0]
+
     def process_circuits(  # noqa: D417
         self,
         circuits: Sequence[Circuit],
@@ -361,7 +411,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 # Generate random numbers for sampling
                 seed = kwargs.get("seed")
                 rng = np.random.default_rng(seed)
-                randnums = rng.random(n_shots, dtype=np.float64).tolist()
+                randnums = np.atleast_1d(rng.random(n_shots, dtype=np.float64)).tolist()
 
                 cusv.sampler_preprocess(  # type: ignore[no-untyped-call]
                     handle=libhandle.handle,
