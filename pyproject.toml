@@ -19,7 +19,7 @@ dependencies = ["pytket"]
 [project.optional-dependencies]
 dev = [
   "pre-commit==4.3.0",
-  "pytest==8.4.1",
+  "pytest==8.4.2",
   "sphinx==8.1.3",
   "ruff==0.12.12",
   "mypy==1.17.1",
