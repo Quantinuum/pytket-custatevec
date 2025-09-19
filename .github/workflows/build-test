@@ -48,11 +48,11 @@ then
 fi
 
 # Run tests
-cd ${GITHUB_WORKSPACE}/tests
-
 python -m pip install .[dev,test]
 
-pytest --doctest-modules
+cd ${GITHUB_WORKSPACE}/tests
+
+pytest
 
 cd ..
 
