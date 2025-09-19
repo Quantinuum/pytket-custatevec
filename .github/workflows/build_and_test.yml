@@ -36,7 +36,7 @@ jobs:
         python-version: '3.10'
     - name: Build and mypy (3.10)
       shell: bash
-      if:  (github.event_name == 'pull_request' &&  github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'release' || github.event_name == 'schedule' )
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || github.event_name == 'schedule'
       run: |
         chmod +x ./.github/workflows/build-test
         ./.github/workflows/build-test mypy
