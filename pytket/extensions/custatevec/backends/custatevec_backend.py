@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import cupy as cp
-import cuquantum.custatevec as cusv
 import numpy as np
 from cuquantum import cudaDataType
+from cuquantum.bindings import custatevec as cusv
 from cuquantum.bindings.custatevec import SamplerOutput
 
 from pytket._tket.circuit import Circuit
