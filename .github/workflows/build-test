@@ -49,7 +49,7 @@ fi
 
 # Run tests
 python -m pip install "cuquantum-python-cu12>=25.3.0"
-python -m pip install .[dev,test]
+python -m pip install -e .[dev,test]
 
 cd ${GITHUB_WORKSPACE}/tests
 
