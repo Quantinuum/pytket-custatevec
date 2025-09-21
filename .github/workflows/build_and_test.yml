@@ -30,6 +30,10 @@ jobs:
         fetch-depth: '0'
         submodules: true
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/* +refs/heads/*:refs/remotes/origin/*
+    - name: Install NVIDIA CUDA Toolkit
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cuda-toolkit-12-2
     # - name: Set up Python 3.10
     #   uses: actions/setup-python@v6
     #   with:
