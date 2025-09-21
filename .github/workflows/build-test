@@ -50,6 +50,19 @@ fi
 # This is now the ONLY installation step needed for testing.
 python -m pip install -e .[dev,test]
 
+# --- ✅ ADD THIS ENTIRE DEBUGGING BLOCK ---
+echo "--- 🕵️ DEBUGGING PYTHON ENVIRONMENT ---"
+echo "-> Python executable:"
+which python
+python --version
+echo "-> Pip packages installed:"
+pip list
+echo "-> Python sys.path:"
+python -c "import sys; from pprint import pprint; pprint(sys.path)"
+echo "-> Attempting to import cuquantum directly:"
+python -c "import cuquantum; print(f'Successfully imported cuquantum from: {cuquantum.__file__}')"
+echo "--- END DEBUGGING ---"
+
 # 4. Run the tests
 cd ${GITHUB_WORKSPACE}/tests
 pytest
