@@ -18,75 +18,48 @@ on:
     - cron: '0 4 * * 2'
 
 jobs:
-  custatevec-checks:
-    name: cuStateVec - Build and test module
+  build-and-test:
+    name: Build, Test, Mypy (Python ${{ matrix.python-version }})
     strategy:
+      fail-fast: false # Allows other jobs to continue if one version fails
       matrix:
-        os: ['self-hosted']
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: '0'
-        submodules: true
-    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/* +refs/heads/*:refs/remotes/origin/*
-    # - name: Set up Python 3.10
-    #   uses: actions/setup-python@v6
-    #   with:
-    #     python-version: '3.10'
-    # - name: Build and mypy (3.10)
-    #   shell: bash
-    #   if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || github.event_name == 'schedule'
-    #   run: |
-    #     chmod +x ./.github/workflows/build-test
-    #     ./.github/workflows/build-test mypy
-    # --- ⬇️ REPLACE setup-python WITH THIS ⬇️ ---
-    - name: Set up Conda Environment
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        auto-update-conda: true
-        python-version: ${{ matrix.python-version }}
-        channels: conda-forge
-        channel-priority: strict
-        # Install all dependencies from conda-forge in one go
-        environment-file: environment-test.yml
-    - name: Build (3.11)
-      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || github.event_name == 'schedule'
-      shell: bash
-      run: |
-        chmod +x ./.github/workflows/build-test
-        ./.github/workflows/build-test nomypy
-    - name: Set up Python 3.12
-      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || github.event_name == 'schedule'
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.12'
-    - name: Build (3.12)
-      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || github.event_name == 'schedule'
-      shell: bash
-      run: |
-        chmod +x ./.github/workflows/build-test
-        ./.github/workflows/build-test nomypy
-    - uses: actions/upload-artifact@v4
-      if: github.event_name == 'release' || contains(github.ref, 'refs/heads/wheel')
-      with:
-        name: artefact-${{ matrix.os }}
-        path: wheelhouse/
-    - name: install poetry
-      run: pip install poetry
-    - name: Install docs dependencies
-      if: (matrix.os == 'ubuntu-latest') && (github.event_name == 'pull_request' || github.event_name == 'schedule' )
-      run: |
-        cd docs
-        bash ./install.sh
-        for w in `find wheelhouse/ -type f -name "*.whl"` ; do poetry run pip install $w ; done
-    - name: Build docs
-      if: (matrix.os == 'ubuntu-latest') && (github.event_name == 'pull_request' || github.event_name == 'schedule' )
-      timeout-minutes: 20
-      run: |
-        cd docs
-        poetry run bash ./build-docs.sh
+        python-version: ['3.10', '3.11', '3.12']
+    runs-on: self-hosted
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for versioning
+          submodules: true
+
+      - name: Set up Conda Environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge
+          channel-priority: strict
+          environment-file: environment-test.yml
+
+      - name: Build, Test, and run Mypy
+        shell: bash -l {0}
+        run: |
+          chmod +x ./.github/workflows/build-test
+          # Always run the 'mypy' check on the latest Python version
+          if [[ "${{ matrix.python-version }}" == "3.12" ]]; then
+            ./.github/workflows/build-test mypy
+          else
+            ./.github/workflows/build-test nomypy
+          fi
+    
+      - name: Upload wheel artifact
+        # Only upload artifacts from one job to avoid duplication
+        if: matrix.python-version == '3.12' && (github.event_name == 'release' || contains(github.ref, 'refs/heads/wheel'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel
+          path: dist/*.whl
 
   publish_to_pypi:
     name: Publish to pypi
