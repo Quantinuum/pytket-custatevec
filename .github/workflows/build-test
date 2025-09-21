@@ -46,6 +46,10 @@ then
     python -m pip install "mypy==1.11.2"
 fi
 
+# 3. Install your package in editable mode along with all dev/test dependencies.
+#    This makes cuquantum and everything else available for the test run.
+python -m pip install -e .[dev,test]
+
 # 4. Run the tests
 pytest
 cd ..
