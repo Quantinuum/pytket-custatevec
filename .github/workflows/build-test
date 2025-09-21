@@ -42,18 +42,16 @@ cp dist/*.whl ${ARTIFACTSDIR}
 # Test and mypy:
 if [[ "${MYPY}" = "mypy" ]]
 then
-    # Note: If mypy is in your [dev] dependencies, this line isn't needed.
     python -m pip install "mypy==1.11.2"
 fi
 
 # 3. Install your package in editable mode along with all dev/test dependencies.
-#    This makes cuquantum and everything else available for the test run.
 python -m pip install -e .[dev,test]
 
-# 4. Run the tests
-pytest
-cd ..
+# 4. Run pytest from the root, but explicitly point it at the tests directory.
+pytest tests/
 
+# 5. Run mypy check if needed
 if [[ "${MYPY}" = "mypy" ]]
 then
     ${GITHUB_WORKSPACE}/mypy-check ${GITHUB_WORKSPACE}
