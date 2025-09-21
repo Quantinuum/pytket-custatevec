@@ -2,10 +2,7 @@ name: pytket-custatevec-test
 channels:
   - conda-forge
 dependencies:
-  # Core Python
-  - python=3.11
-
-  # Dependencies from your pyproject.toml
+  # The Python version will be injected by the GitHub Actions matrix
   - pip
   - pytket
   - cupy
@@ -14,4 +11,3 @@ dependencies:
   - pytket-qiskit
   - pytket-qulacs
   - mypy
-  # Add any other dev/test tools here
