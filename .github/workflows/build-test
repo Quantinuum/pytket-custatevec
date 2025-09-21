@@ -27,34 +27,32 @@ git clean -dfx
 echo "Module to test: ${MODULE}"
 
 MODULEDIR="${GITHUB_WORKSPACE}"
-
 ARTIFACTSDIR=${GITHUB_WORKSPACE}/wheelhouse
 
 rm -rf ${ARTIFACTSDIR} && mkdir ${ARTIFACTSDIR}
 
 python -m pip install --upgrade pip wheel build
 
-# Generate and install the package
+# 1. Build the package (sdist and wheel)
 python -m build
-for w in dist/*.whl ; do
-    python -m pip install $w
-    cp $w ${ARTIFACTSDIR}
-done
+
+# 2. Copy the new wheel to your artifacts directory
+cp dist/*.whl ${ARTIFACTSDIR}
 
 # Test and mypy:
 if [[ "${MYPY}" = "mypy" ]]
 then
+    # Note: If mypy is in your [dev] dependencies, this line isn't needed.
     python -m pip install "mypy==1.11.2"
 fi
 
-# Run tests
-python -m pip install "cuquantum-python-cu12>=25.3.0"
+# 3. Install the package in editable mode WITH all test dependencies
+# This is now the ONLY installation step needed for testing.
 python -m pip install -e .[dev,test]
 
+# 4. Run the tests
 cd ${GITHUB_WORKSPACE}/tests
-
 pytest
-
 cd ..
 
 if [[ "${MYPY}" = "mypy" ]]
