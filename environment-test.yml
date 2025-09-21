@@ -6,13 +6,13 @@ dependencies:
   # Conda packages
   - python
   - pip
-  - pytket
   - cupy
   - cuquantum-python
   - pytest
 
   # Pip-only packages
   - pip:
+      - pytket
       - pytket-qiskit
       - pytket-qulacs
       - mypy
