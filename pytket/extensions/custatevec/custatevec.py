@@ -227,40 +227,39 @@ def compute_expectation(
     if not isinstance(statevector, CuStateVector):
         raise TypeError("statevector must be a CuStateVector")
 
-    if matrix_dtype is None:
-        matrix_dtype = cudaDataType.CUDA_C_64F
     _logger = set_logger("ComputeExpectation", level=loglevel, file=logfile)
 
-    # Convert the operator to a sparse matrix and create a CuStateVecMatrix
-    dtype = cuquantum_to_np_dtype(matrix_dtype)
-    matrix_array = operator.to_sparse_matrix().toarray()
-    matrix = CuStateVecMatrix(
-        cp.array(matrix_array, dtype=dtype),
-        matrix_dtype,
-    )
+    # Map qubits to basis bits
     _qubit_idx_map: dict[Qubit, int] = {q: i for i, q in enumerate(sorted(circuit.qubits, reverse=True))}
-    # Match cuStateVec's little-endian convention: Sort basis bits in LSB-to-MSB order
-    # Basis bits: indices of the qubits you want the operator to act upon
-    basis_bits = [_qubit_idx_map[x] for x in operator.all_qubits]
 
-    expectation_value = np.empty(1, dtype=np.complex128)
+    # Collect Pauli terms, basis bits, and coefficients for each string in the operator
+    pauli_ops: list[list[Pauli]] = []
+    basis_bits: list[list[int]] = []
+    coefficients: list[float] = []
+    for string, coefficient in operator._dict.items():
+        coefficients.append(float(coefficient.evalf()))
+        operators = list(string.map.items())
+        pauli_ops.append([_cast_pauli(op) for _, op in operators] or [Pauli.I])
+        basis_bits.append([_qubit_idx_map[q] for q, _ in operators] or [min(_qubit_idx_map.values())])
+
+    # Container for expectation values of each string
+    expectation_values = np.empty(len(coefficients), dtype=np.float64)
 
     with handle.stream:
-        cusv.compute_expectation(
+        cusv.compute_expectations_on_pauli_basis(
             handle=handle.handle,
             sv=statevector.array.data.ptr,
             sv_data_type=statevector.cuda_dtype,
             n_index_bits=statevector.n_qubits,
-            expectation_value=expectation_value.ctypes.data,  # requires **host** pointer
-            expectation_data_type=cudaDataType.CUDA_C_64F,
-            matrix=matrix.matrix.data.ptr,
-            matrix_data_type=matrix.cuda_dtype,
-            layout=cusv.MatrixLayout.COL,  # COL -> correct phase for complex exp. val. and correct exp. values
-            basis_bits=basis_bits,
-            n_basis_bits=len(basis_bits),
-            compute_type=ComputeType.COMPUTE_DEFAULT,
-            extra_workspace=0,
-            extra_workspace_size_in_bytes=0,
+            expectation_values=expectation_values.ctypes.data,
+            pauli_operators_array=pauli_ops,
+            n_pauli_operator_arrays=len(pauli_ops),
+            basis_bits_array=basis_bits,
+            n_basis_bits_array=[len(b) for b in basis_bits],
         )
     handle.stream.synchronize()
-    return expectation_value[0]
+
+    # Compute the weighted sum of expectation values
+    expectation_value = coefficients @ expectation_values
+
+    return expectation_value.real
