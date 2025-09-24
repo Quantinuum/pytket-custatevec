@@ -27,10 +27,9 @@ except ImportError as _cuda_import_err:
     raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 
 import numpy as np
+import pytket.pauli
 from pytket.circuit import OpType, Qubit
 from pytket.utils.operators import QubitPauliOperator
-
-from pytket import pauli
 
 from .apply import (
     apply_matrix,
@@ -56,14 +55,14 @@ _initial_statevector_dict: dict[str, StateVectorType] = {
 }
 
 
-def _cast_pauli(op: pauli.Pauli) -> Pauli:
-    if op == pauli.Pauli.I:
+def _cast_pauli(op: pytket.pauli.Pauli) -> Pauli:
+    if op == pytket.pauli.Pauli.I:
         return Pauli.I
-    if op == pauli.Pauli.X:
+    if op == pytket.pauli.Pauli.X:
         return Pauli.X
-    if op == pauli.Pauli.Y:
+    if op == pytket.pauli.Pauli.Y:
         return Pauli.Y
-    if op == pauli.Pauli.Z:
+    if op == pytket.pauli.Pauli.Z:
         return Pauli.Z
     raise ValueError(f"Unknown Pauli operator: {op}")
 
