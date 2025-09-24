@@ -243,7 +243,7 @@ def compute_expectation(
     pauli_ops: list[list[Pauli]] = []
     basis_bits: list[list[int]] = []
     coefficients: list[float] = []
-    for string, coefficient in operator.map.items():
+    for string, coefficient in operator._dict.items():  # noqa: SLF001
         coefficients.append(float(coefficient.evalf()))
         operators = list(string.map.items())
         pauli_ops.append([_cast_pauli(op) for _, op in operators] or [Pauli.I])
