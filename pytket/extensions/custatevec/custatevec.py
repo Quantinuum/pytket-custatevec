@@ -21,24 +21,22 @@ from .utils import INSTALL_CUDA_ERROR_MESSAGE
 try:
     import cupy as cp
     import cuquantum.custatevec as cusv
-    from cuquantum import ComputeType
     from cuquantum.bindings._utils import cudaDataType
-    from cuquantum.bindings.custatevec import StateVectorType
+    from cuquantum.bindings.custatevec import Pauli, StateVectorType
 except ImportError as _cuda_import_err:
     raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 
 import numpy as np
-
 from pytket.circuit import OpType, Qubit
-from pytket.extensions.custatevec.gate_classes import CuStateVecMatrix
 from pytket.utils.operators import QubitPauliOperator
+
+from pytket import pauli
 
 from .apply import (
     apply_matrix,
     apply_pauli_rotation,
     pytket_paulis_to_custatevec_paulis,
 )
-from .dtype import cuquantum_to_np_dtype
 from .gate_definitions import get_gate_matrix, get_uncontrolled_gate
 from .logger import set_logger
 from .statevector import CuStateVector
@@ -56,6 +54,18 @@ _initial_statevector_dict: dict[str, StateVectorType] = {
     "ghz": StateVectorType.GHZ,
     "w": StateVectorType.W,
 }
+
+
+def _cast_pauli(op: pauli.Pauli) -> Pauli:
+    if op == pauli.Pauli.I:
+        return Pauli.I
+    if op == pauli.Pauli.X:
+        return Pauli.X
+    if op == pauli.Pauli.Y:
+        return Pauli.Y
+    if op == pauli.Pauli.Z:
+        return Pauli.Z
+    raise ValueError(f"Unknown Pauli operator: {op}")
 
 
 def initial_statevector(
@@ -203,7 +213,6 @@ def compute_expectation(
     statevector: CuStateVector,
     operator: QubitPauliOperator,
     circuit: Circuit,
-    matrix_dtype: cudaDataType | None = None,
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
 ) -> np.float64:
@@ -214,8 +223,6 @@ def compute_expectation(
         statevector (CuStateVector): The state vector on which to compute the exp. val.
         operator (QubitPauliOperator): The operator for which to compute the exp. val.
         circuit (Circuit): The circuit associated with the state vector.
-        matrix_dtype (cudaDataType, optional): The CUDA data type for operator matrix.
-            Defaults to None, which uses CUDA_C_64F.
         loglevel (int, optional): Logging level. Defaults to logging.WARNING.
         logfile (str, optional): Log file path. Defaults to None, which uses console.
 
@@ -236,7 +243,7 @@ def compute_expectation(
     pauli_ops: list[list[Pauli]] = []
     basis_bits: list[list[int]] = []
     coefficients: list[float] = []
-    for string, coefficient in operator._dict.items():
+    for string, coefficient in operator.map.items():
         coefficients.append(float(coefficient.evalf()))
         operators = list(string.map.items())
         pauli_ops.append([_cast_pauli(op) for _, op in operators] or [Pauli.I])
