@@ -11,7 +11,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py: ["python3.12", "python3.11"]
+        include:
+          - py: "python3.12"
+            ver: "3.12"
+          - py: "python3.11"
+            ver: "3.11"
 
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +34,7 @@ jobs:
           set -euo pipefail
           if ! command -v ${{ matrix.py }} >/dev/null 2>&1; then
             echo "${{ matrix.py }} not found; installing locally with uv..."
-            ver=${{ matrix.py#python}}
-            uv python install "$ver"
+            uv python install "${{ matrix.ver }}"
           fi
           ${{ matrix.py }} -V
 
@@ -39,15 +42,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ver=${{ matrix.py#python}}
-          PYBIN="$(uv python find "$ver")"
+          PYBIN="$(uv python find '${{ matrix.ver }}')"
           echo "Using interpreter: $PYBIN"
 
           # Reuse preinstalled libs if present; otherwise uv will fetch them
           uv venv --python "$PYBIN" --system-site-packages .venv
           source .venv/bin/activate
 
-          # Install your package with its deps + test extras
+          # Install your package with deps + test extras
           uv pip install ".[test]"
 
           # Run the full test suite
