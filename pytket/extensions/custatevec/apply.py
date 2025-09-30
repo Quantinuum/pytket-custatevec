@@ -9,7 +9,7 @@ from .utils import INSTALL_CUDA_ERROR_MESSAGE
 try:
     from cuquantum import ComputeType
     from cuquantum.bindings import custatevec as cusv
-    from cuquantum.custatevec import Pauli as cusvPauli  # type: ignore[import-error]
+    from cuquantum.bindings.custatevec import Pauli as cusvPauli  # type: ignore[import-error]
 except ImportError as _cuda_import_err:
     raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 
