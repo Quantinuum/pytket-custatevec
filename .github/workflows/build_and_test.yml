@@ -1,4 +1,4 @@
-name: Test (Py3.12, minimal)
+name: Test (uv, Py3.12)
 
 on:
   pull_request:
@@ -8,6 +8,7 @@ on:
 jobs:
   test:
     runs-on: self-hosted
+
     steps:
       - uses: actions/checkout@v4
 
@@ -17,21 +18,27 @@ jobs:
           command -v python3.12 >/dev/null || { echo "python3.12 not found"; exit 1; }
           python3.12 -V
 
-      - name: Create env (prefer venv, fallback to virtualenv)
+      - name: Install uv (no sudo)
         shell: bash
         run: |
           set -euo pipefail
-          if python3.12 -m venv .venv --system-site-packages 2>/dev/null; then
-            echo "Created venv with built-in venv"
-          else
-            echo "Built-in venv unavailable; using virtualenv fallback"
-            # install virtualenv just for this user; avoids needing root
-            python3.12 -m pip install --user virtualenv
-            python3.12 -m virtualenv .venv --system-site-packages
-          fi
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          uv --version
 
-          # activate and run tests
+      - name: Create venv, install, and test (reuse system packages)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Create venv that can import preinstalled CUDA/CuPy/cuQuantum
+          uv venv --python python3.12 --system-site-packages .venv
           source .venv/bin/activate
-          python -m pip install -U pip setuptools wheel
-          python -m pip install --no-build-isolation ".[test]"
+
+          # Install your package WITHOUT dependencies (heavy deps already on system)
+          uv pip install --no-deps .
+
+          # Install small test dependencies only
+          uv pip install pytest pytket-qiskit pytket-qulacs
+
+          # Run tests
           pytest -q
