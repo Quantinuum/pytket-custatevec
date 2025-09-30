@@ -26,19 +26,17 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           uv --version
 
-      - name: Create venv, install, and test (reuse system packages)
+      - name: Create venv, install, and test
         shell: bash
         run: |
           set -euo pipefail
-          # Create venv that can import preinstalled CUDA/CuPy/cuQuantum
+          # venv reuses system packages if present
           uv venv --python python3.12 --system-site-packages .venv
           source .venv/bin/activate
 
-          # Install your package WITHOUT dependencies (heavy deps already on system)
-          uv pip install --no-deps .
-
-          # Install small test dependencies only
-          uv pip install pytest pytket-qiskit pytket-qulacs
+          # Install your project WITH dependencies + test extras
+          # (installs cupy-cuda12x and cuquantum-python-cu12 if missing)
+          uv pip install ".[test]"
 
           # Run tests
           pytest -q
