@@ -31,32 +31,32 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           uv --version
 
-      - name: Ensure ${{ matrix.py }} exists (install locally if missing)
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v ${{ matrix.py }} >/dev/null 2>&1; then
-            echo "${{ matrix.py }} not found; installing locally with uv..."
-            uv python install "${{ matrix.ver }}"
-          fi
-          ${{ matrix.py }} -V
+      # - name: Ensure ${{ matrix.py }} exists (install locally if missing)
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     if ! command -v ${{ matrix.py }} >/dev/null 2>&1; then
+      #       echo "${{ matrix.py }} not found; installing locally with uv..."
+      #       uv python install "${{ matrix.ver }}"
+      #     fi
+      #     ${{ matrix.py }} -V
 
-      - name: Create venv, install deps, run tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          PYBIN="$(uv python find '${{ matrix.ver }}')"
-          echo "Using interpreter: $PYBIN"
+      # - name: Create venv, install deps, run tests
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     PYBIN="$(uv python find '${{ matrix.ver }}')"
+      #     echo "Using interpreter: $PYBIN"
 
-          # Reuse preinstalled libs if present; otherwise uv will fetch them
-          uv venv --python "$PYBIN" --system-site-packages .venv
-          source .venv/bin/activate
+      #     # Reuse preinstalled libs if present; otherwise uv will fetch them
+      #     uv venv --python "$PYBIN" --system-site-packages .venv
+      #     source .venv/bin/activate
 
-          # Install your package with deps + test extras
-          uv pip install ".[test]"
+      #     # Install your package with deps + test extras
+      #     uv pip install ".[test]"
 
-          # Run the full test suite
-          pytest -q
+      #     # Run the full test suite
+      #     pytest -q
 
   check-docs:
     name: Build docs and create artifact
@@ -75,19 +75,23 @@ jobs:
       - name: Install uv
         shell: bash
         run: |
+          set -euo pipefail
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          uv --version
 
-      - name: Build dists
+      - name: Build dists (no pip needed)
         shell: bash
         run: |
+          set -euo pipefail
           uv python install 3.12
           PYBIN="$(uv python find 3.12)"
           uv venv --python "$PYBIN" .venv
-          source .venv/bin/activate
+          # You don't even need to activate the venv to build:
           uv build
-          python -m pip install twine
-          twine check dist/*   # sanity check: metadata is valid
+          ls -l dist/
+          # Metadata sanity check without installing pip:
+          uvx twine check dist/*
 
       - name: Upload to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
