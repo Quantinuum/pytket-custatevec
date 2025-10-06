@@ -21,7 +21,7 @@ jobs:
           #   ver: "3.10"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv (no sudo)
         shell: bash
@@ -64,7 +64,7 @@ jobs:
     needs: [test]             # optional
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive   # pulls pytket-docs-theming AND its quantinuum-sphinx submodule
           fetch-depth: 0
@@ -107,7 +107,7 @@ jobs:
     needs: [test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
         shell: bash
@@ -143,7 +143,7 @@ jobs:
     needs: [test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
         shell: bash
