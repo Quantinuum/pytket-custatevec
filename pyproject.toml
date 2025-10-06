@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 authors = [
   { name = "Fabian Finger", email = "fabian.finger@quantinuum.com"},
   { name = "Gabriel Matos", email = "gabriel.matos@quantinuum.com"},
-  { name = "Pranav Kalidindi", email = "pranav.kalidindi@quantinuum.com" },
+  { name = "Pranav Kalidindi", email = "pranav.kalidindi@quantinuum.com"},
 ]
 
 dependencies = [
