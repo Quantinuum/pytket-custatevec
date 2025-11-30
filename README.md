@@ -3,20 +3,13 @@
   <h1>pytket-custatevec</h1>
   <p><strong>GPU-accelerated statevector simulation for pytket.</strong></p>
 
-  <p>
-    <a href="https://github.com/CQCL/pytket-custatevec/actions">
-      <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat&logo=github" alt="Build" />
-    </a>
-    <a href="https://pypi.org/project/pytket-custatevec/">
-      <img src="https://img.shields.io/badge/pypi-v0.0.1-blue?style=flat&logo=pypi" alt="PyPI" />
-    </a>
-    <a href="https://github.com/CQCL/pytket-custatevec/blob/main/LICENSE">
-      <img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat" alt="License" />
-    </a>
-    <a href="https://tketusers.slack.com/">
-      <img src="https://img.shields.io/badge/Slack-TKET%20Users-4A154B?logo=slack" alt="Slack" />
-    </a>
-  </p>
+<p>
+  <a href="https://github.com/CQCL/pytket-custatevec/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat&logo=github" alt="Build" /></a>
+  <a href="https://pypi.org/project/pytket-custatevec/"><img src="https://img.shields.io/badge/pypi-v0.0.1-blue?style=flat&logo=pypi" alt="PyPI" /></a>
+  <a href="https://github.com/CQCL/pytket-custatevec/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat" alt="License" /></a>
+  <a href="https://tketusers.slack.com/"><img src="https://img.shields.io/badge/Slack-TKET%20Users-4A154B?logo=slack" alt="Slack" /></a>
+  <a href="https://quantumcomputing.stackexchange.com/tags/pytket"><img src="https://img.shields.io/badge/StackExchange-%23ffffff.svg?style=for-the-badge&logo=StackExchange" alt="Stack Exchange" /></a>
+</p>
 
   <h3>
     <a href="https://cqcl.github.io/pytket-custatevec/">📚 Read the Full Documentation</a>
@@ -34,43 +27,6 @@ It acts as a bridge to the [NVIDIA cuQuantum](https://developer.nvidia.com/cuqua
 * **High Performance:** Significantly faster than CPU-based simulators for large qubit counts (20-30+).
 * **Seamless Integration:** Works as a standard `pytket` Backend.
 * **Optimized Memory:** Manages GPU VRAM efficiently for complex simulations.
-
-## 🏛 Architecture
-
-```mermaid
-flowchart LR
-    %% Node Definitions
-    User([User Code])
-    Backend[CuStateVecBackend]
-    SDK[NVIDIA cuStateVec]
-    GPU[NVIDIA GPU]
-
-    %% Connections
-    User --> |pytket Circuit| Backend
-    Backend --> |cuQuantum Python| SDK
-    SDK -.-> |CUDA| GPU
-
-    %% Styles for GitHub Compatibility (Standard Colors)
-    classDef default stroke-width:2px;
-    
-    %% User: Light Grey fill, Dark text
-    classDef user fill:#F5F5F5,stroke:#333333,color:#333;
-
-    %% Backend: Light Teal fill, Dark Teal text
-    classDef pytket fill:#E0F2F1,stroke:#00796b,color:#004D40;
-    
-    %% NVIDIA SDK: Bright Green, Dark text
-    classDef nvidia fill:#76b900,stroke:#558600,color:#000;
-    
-    %% Hardware: Black fill, White text, Dashed border
-    classDef hardware fill:#121212,stroke:#E0E0E0,color:#fff,stroke-dasharray: 5 5;
-
-    %% Apply Styles
-    class User user;
-    class Backend pytket;
-    class SDK nvidia;
-    class GPU hardware;
-```
 
 ## 📦 Installation
 
