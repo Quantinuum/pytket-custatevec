@@ -46,16 +46,24 @@ flowchart LR
     GPU[NVIDIA GPU]
 
     %% Connections
-    User == pytket Circuit ==> Backend
-    Backend == cuQuantum Python ==> SDK
+    User --> |pytket Circuit| Backend
+    Backend --> |cuQuantum Python| SDK
     SDK -.-> |CUDA| GPU
 
-    %% Styles for GitHub Light/Dark Mode compatibility
-    classDef default stroke-width:2px,font-size:14px;
-    classDef user fill:#f9f9f9,stroke:#333,color:#333;
-    classDef pytket fill:#e0f2f1,stroke:#00796b,stroke-width:2px,color:#004d40;
-    classDef nvidia fill:#76b900,stroke:#558600,stroke-width:2px,color:#fff;
-    classDef hardware fill:#e0e0e0,stroke:#000,stroke-width:2px,color:#000,stroke-dasharray: 5 5;
+    %% Styles for GitHub Compatibility (Standard Colors)
+    classDef default stroke-width:2px;
+    
+    %% User: Light Grey fill, Dark text
+    classDef user fill:#F5F5F5,stroke:#333333,color:#333;
+
+    %% Backend: Light Teal fill, Dark Teal text
+    classDef pytket fill:#E0F2F1,stroke:#00796b,color:#004D40;
+    
+    %% NVIDIA SDK: Bright Green, Dark text
+    classDef nvidia fill:#76b900,stroke:#558600,color:#000;
+    
+    %% Hardware: Black fill, White text, Dashed border
+    classDef hardware fill:#121212,stroke:#E0E0E0,color:#fff,stroke-dasharray: 5 5;
 
     %% Apply Styles
     class User user;
