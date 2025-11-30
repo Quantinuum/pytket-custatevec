@@ -48,15 +48,15 @@ edit_uri: ""
 <div class="grid cards" markdown>
 
 -   :material-speedometer: **High Performance**
-    ---
+    -
     Leverage NVIDIA GPUs to simulate quantum circuits significantly faster than CPU-based simulators, especially for entangling gates.
 
 -   :material-layers-triple: **Seamless Integration**
-    ---
+    -
     Works as a standard `pytket` Backend. Just switch your backend import, and your existing code runs on the GPU immediately.
 
 -   :material-memory: **Optimized Memory**
-    ---
+    -
     Utilizes `cuStateVec`'s advanced memory management to handle large statevectors efficiently on GPU VRAM.
 
 </div>

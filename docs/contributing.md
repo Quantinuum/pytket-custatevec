@@ -19,6 +19,7 @@ pre-commit run
 ```
 
 This will automatically:
+
 * Format code using [ruff](https://pypi.org/project/ruff/) with default options.
 * Do static type checking using [mypy](https://mypy.readthedocs.io/en/stable/).
 * Lint using [ruff](https://pypi.org/project/ruff/) to check compliance with a set of style requirements (listed in `ruff.toml`).
