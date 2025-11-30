@@ -27,7 +27,6 @@ except ImportError as _cuda_import_err:
     raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 
 import numpy as np
-
 import pytket.pauli
 from pytket.circuit import OpType, Qubit
 from pytket.utils.operators import QubitPauliOperator
@@ -215,20 +214,8 @@ def compute_expectation(
     circuit: Circuit,
     loglevel: int = logging.WARNING,
     logfile: str | None = None,
-) -> np.float64:
-    """Compute the expectation value of a QubitPauliOperator on a CuStateVector.
-
-    Args:
-        handle (CuStateVecHandle): cuStateVec handle.
-        statevector (CuStateVector): The state vector on which to compute the exp. val.
-        operator (QubitPauliOperator): The operator for which to compute the exp. val.
-        circuit (Circuit): The circuit associated with the state vector.
-        loglevel (int, optional): Logging level. Defaults to logging.WARNING.
-        logfile (str, optional): Log file path. Defaults to None, which uses console.
-
-    Returns:
-        np.complex128: The expectation value of the operator on the state vector.
-    """
+) -> float | complex: # Update return type hint
+    """Compute the expectation value of a QubitPauliOperator on a CuStateVector."""
     if not isinstance(operator, QubitPauliOperator):
         raise TypeError("operator must be a QubitPauliOperator")
     if not isinstance(statevector, CuStateVector):
@@ -242,14 +229,19 @@ def compute_expectation(
     # Collect Pauli terms, basis bits, and coefficients for each string in the operator
     pauli_ops: list[list[Pauli]] = []
     basis_bits: list[list[int]] = []
-    coefficients: list[float] = []
+
+    coefficients: list[complex] = []
+
     for string, coefficient in operator._dict.items():  # noqa: SLF001
-        coefficients.append(float(coefficient.evalf()))
+        # Convert sympy expression to complex
+        coefficients.append(complex(coefficient.evalf()))
+
         operators = list(string.map.items())
         pauli_ops.append([_cast_pauli(op) for _, op in operators] or [Pauli.I])
         basis_bits.append([_qubit_idx_map[q] for q, _ in operators] or [min(_qubit_idx_map.values())])
 
     # Container for expectation values of each string
+    # Note: Pauli string expectation values are always Real (Hermitian), so float64 is correct here for CUDA
     expectation_values = np.empty(len(coefficients), dtype=np.float64)
 
     with handle.stream:
@@ -267,6 +259,8 @@ def compute_expectation(
     handle.stream.synchronize()
 
     # Compute the weighted sum of expectation values
-    expectation_value = coefficients @ expectation_values
+    # This dot product will now correctly handle (Complex * Real) -> Complex
+    expectation_value = np.dot(coefficients, expectation_values)
 
-    return expectation_value.real
+    # Return the full result (likely complex if coefficients were complex)
+    return expectation_value
