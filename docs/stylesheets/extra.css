@@ -262,52 +262,53 @@ mjx-container {
    9. DIAGRAM VARIABLES (Light/Dark Mode)
    ========================================================================== */
 
-/* LIGHT MODE */
+/* LIGHT MODE COLORS (ENSURE HIGH CONTRAST) */
 [data-md-color-scheme="default"] {
-    /* Node Colors */
-    --dia-user-bg: #F5F5F5;
+    /* User Code: Near-White background, Black text (CRISP) */
+    --dia-user-bg: #FAFAFA;      
     --dia-user-stroke: #333333;
     --dia-user-text: #000000;
 
-    --dia-pytket-bg: #E0F2F1;
+    /* Pytket Backend: Very Light Teal, Darker Teal text */
+    --dia-pytket-bg: #E0F7FA; 
     --dia-pytket-stroke: #00695C;
-    --dia-pytket-text: #004D40;
-
+    --dia-pytket-text: #004D40; 
+    
+    /* NVIDIA: Light Green, Dark Green text */
     --dia-nvidia-bg: #F1F8E9;
     --dia-nvidia-stroke: #76B900;
     --dia-nvidia-text: #33691E;
 
+    /* Hardware: Near-White background, Black text */
     --dia-hw-bg: #FAFAFA;
     --dia-hw-stroke: #000000;
     --dia-hw-text: #000000;
 
-    /* Edge Labels (Arrows) */
-    --dia-edge-text: #333333;
-    --dia-edge-bg: #FFFFFF; /* White background for arrow text */
+    /* Edge Labels */
+    --dia-edge-text: #333333; 
+    --dia-edge-bg: #FFFFFF;   
 }
 
-/* DARK MODE */
+/* DARK MODE COLORS (keep the previous dark palette) */
 [data-md-color-scheme="slate"] {
-    /* Node Colors */
     --dia-user-bg: #37474F;
-    --dia-user-stroke: #B0BEC5; /* Lighter stroke for visibility */
-    --dia-user-text: #FFFFFF;   /* Force White */
+    --dia-user-stroke: #90A4AE; 
+    --dia-user-text: #FFFFFF;   
 
     --dia-pytket-bg: #004D40;
-    --dia-pytket-stroke: #80CBC4;
-    --dia-pytket-text: #FFFFFF; /* Force White */
+    --dia-pytket-stroke: #4DB6AC;
+    --dia-pytket-text: #FFFFFF; 
 
-    --dia-nvidia-bg: #558B2F;   /* Slightly darker green for text contrast */
+    --dia-nvidia-bg: #558B2F;   
     --dia-nvidia-stroke: #AED581;
-    --dia-nvidia-text: #FFFFFF; /* Force White */
+    --dia-nvidia-text: #FFFFFF; 
 
     --dia-hw-bg: #121212;
     --dia-hw-stroke: #E0E0E0;
-    --dia-hw-text: #FFFFFF;     /* Force White */
+    --dia-hw-text: #FFFFFF;     
 
-    /* Edge Labels (Arrows) */
-    --dia-edge-text: #E0E0E0;   /* Light Grey text */
-    --dia-edge-bg: #1e1e1e;     /* Match the Slate background */
+    --dia-edge-text: #E0E0E0;   
+    --dia-edge-bg: #1e1e1e;     
 }
 
 /* ==========================================================================
@@ -385,4 +386,13 @@ mjx-container {
 .mermaid .edgeLabel span {
     background-color: var(--dia-edge-bg) !important;
     color: var(--dia-edge-text) !important;
+}
+
+/* ==========================================================================
+   11. MERMAID CONTROL FIXES
+   ========================================================================== */
+
+/* Hides the default Zoom/Pan toolbar buttons */
+.mermaid .mermaid-toolbar {
+    display: none !important;
 }
