@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/pytket-custatevec/"><img src="https://img.shields.io/badge/pypi-v0.0.1-blue?style=flat&logo=pypi" alt="PyPI" /></a>
   <a href="https://github.com/CQCL/pytket-custatevec/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat" alt="License" /></a>
   <a href="https://tketusers.slack.com/"><img src="https://img.shields.io/badge/Slack-TKET%20Users-4A154B?logo=slack" alt="Slack" /></a>
-  <a href="https://quantumcomputing.stackexchange.com/tags/pytket"><img src="https://img.shields.io/badge/StackExchange-%23ffffff.svg?style=for-the-badge&logo=StackExchange" alt="Stack Exchange" /></a>
+<a href="https://quantumcomputing.stackexchange.com/tags/pytket"><img src="https://img.shields.io/badge/StackExchange-pytket-2287F4?logo=stackexchange" alt="Stack Exchange" /></a>
 </p>
 
   <h3>
