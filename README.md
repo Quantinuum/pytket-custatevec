@@ -16,6 +16,12 @@
   </h3>
 </div>
 
+<div align="center">
+  **Navigate:**
+  | [🚀 Features](#--features) | [📦 Installation](#-installation) | [⚡ Quick Start](#-quick-start) | [💻 Development](#-development) | [📄 Citing](#-citing) |
+</div>
+<br>
+
 ---
 
 **pytket-custatevec** is a high-performance extension for [pytket](https://tket.quantinuum.com/) that allows quantum circuits to be simulated on NVIDIA GPUs.
