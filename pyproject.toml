@@ -49,7 +49,7 @@ test = [
 where = ["."]
 
 [project.urls]
-Repository = "https://github.com/CQCL/pytket-custatevec.git"
+Repository = "https://github.com/quantinuum/pytket-custatevec.git"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

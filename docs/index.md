@@ -22,7 +22,7 @@ edit_uri: ""
 </div>
 
 <div class="external-badges">
-  <a href="https://github.com/CQCL/pytket-custatevec/actions">
+  <a href="https://github.com/quantinuum/pytket-custatevec/actions">
     <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat&logo=github" alt="Build">
   </a>
 
@@ -30,7 +30,7 @@ edit_uri: ""
     <img src="https://img.shields.io/badge/pypi-v0.1.0-blue?style=flat&logo=pypi" alt="PyPI">
   </a>
 
-  <a href="https://github.com/CQCL/pytket-custatevec/blob/main/LICENSE">
+  <a href="https://github.com/quantinuum/pytket-custatevec/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat" alt="License">
   </a>
 
@@ -95,7 +95,7 @@ flowchart LR
 
 ## Bugs and Support
 
-This is a community-driven project. Please file bugs and feature requests on the [GitHub Issue Tracker](https://github.com/CQCL/pytket-custatevec/issues).
+This is a community-driven project. Please file bugs and feature requests on the [GitHub Issue Tracker](https://github.com/quantinuum/pytket-custatevec/issues).
 
 <!-- ## Citing
 
@@ -105,7 +105,7 @@ If you use `pytket-custatevec` in your research, please cite it as follows:
 @software{pytket_custatevec,
   author = {{The pytket-custatevec Developers}},
   title = {pytket-custatevec: GPU-accelerated statevector simulation},
-  url = {[https://github.com/CQCL/pytket-custatevec](https://github.com/CQCL/pytket-custatevec)},
+  url = {[https://github.com/quantinuum/pytket-custatevec](https://github.com/quantinuum/pytket-custatevec)},
   year = {2025}
 }
 ``` -->

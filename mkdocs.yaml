@@ -2,9 +2,9 @@
 # PROJECT METADATA
 # ==============================================================================
 site_name: pytket-custatevec
-site_url: https://cqcl.github.io/pytket-custatevec/
-repo_url: https://github.com/CQCL/pytket-custatevec
-repo_name: CQCL/pytket-custatevec
+site_url: https://quantinuum.github.io/pytket-custatevec/
+repo_url: https://github.com/quantinuum/pytket-custatevec
+repo_name: quantinuum/pytket-custatevec
 
 # Adds a "Copyright 202X Quantinuum" footer
 copyright: Copyright &copy; 2025 Quantinuum & Contributors
@@ -155,7 +155,7 @@ extra:
     provider: mike
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/CQCL/pytket-custatevec
+      link: https://github.com/quantinuum/pytket-custatevec
     - icon: fontawesome/brands/slack
       link: https://tketusers.slack.com/
     - icon: fontawesome/brands/stack-exchange
