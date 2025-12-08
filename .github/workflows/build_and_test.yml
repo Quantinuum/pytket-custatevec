@@ -137,7 +137,7 @@ jobs:
           python benchmarks/benchmark.py
 
       - name: Upload Benchmark Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: benchmark-plots
           path: docs/assets/benchmark_*.html
