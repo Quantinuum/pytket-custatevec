@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytket-custatevec"
-version = "0.1.0"
+version = "0.1.1"
 description = "Extension for pytket providing access to cuStateVec functionality."
 readme = "README.md"
 requires-python = ">=3.10"
