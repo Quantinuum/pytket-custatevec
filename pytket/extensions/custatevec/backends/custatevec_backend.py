@@ -24,7 +24,6 @@ import numpy as np
 from cuquantum import cudaDataType
 from cuquantum.bindings import custatevec as cusv
 from cuquantum.bindings.custatevec import SamplerOutput
-
 from pytket._tket.circuit import Circuit
 from pytket.backends.backend import Backend
 from pytket.backends.backend_exceptions import CircuitNotRunError
@@ -32,13 +31,6 @@ from pytket.backends.backendinfo import BackendInfo
 from pytket.backends.backendresult import BackendResult
 from pytket.backends.resulthandle import ResultHandle, _ResultIdTuple
 from pytket.backends.status import CircuitStatus, StatusEnum
-from pytket.extensions.custatevec.custatevec import (
-    compute_expectation,
-    initial_statevector,
-    run_circuit,
-)
-from pytket.extensions.custatevec.gate_definitions import _control_to_gate_map, gate_list
-from pytket.extensions.custatevec.handle import CuStateVecHandle
 from pytket.passes import (
     BasePass,
     CustomPass,
@@ -58,6 +50,14 @@ from pytket.predicates import (
 from pytket.utils.operators import QubitPauliOperator
 from pytket.utils.outcomearray import OutcomeArray
 from pytket.utils.results import KwargTypes
+
+from pytket.extensions.custatevec.custatevec import (
+    compute_expectation,
+    initial_statevector,
+    run_circuit,
+)
+from pytket.extensions.custatevec.gate_definitions import _control_to_gate_map, gate_list
+from pytket.extensions.custatevec.handle import CuStateVecHandle
 
 from .._metadata import __extension_name__, __extension_version__  # noqa: TID252
 
@@ -379,13 +379,18 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
         if n_shots is None:
             raise ValueError("n_shots must be specified for shot-based simulation.")
 
-        all_shots = [n_shots] * len(circuits) if isinstance(n_shots, int) else n_shots
+        if isinstance(n_shots, int):
+            all_shots = [n_shots] * len(circuits)
+        else:
+            all_shots = list(n_shots)
+            if len(all_shots) != len(circuits):
+                raise ValueError("Length of n_shots must match number of circuits.")
 
         if valid_check:
             self._check_all_circuits(circuits, nomeasure_warn=False)
 
         handle_list = []
-        for circuit, circ_shots in zip(circuits, all_shots, strict=False):
+        for circuit, circ_shots in zip(circuits, all_shots, strict=True):
             with CuStateVecHandle() as libhandle:
                 sv = initial_statevector(
                     handle=libhandle,
@@ -406,7 +411,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                 # This reversal adapts our MSB-first list to the LSB-first format cuStateVec requires.
                 measured_qubits.reverse()
 
-                sampler_descriptor, size_t = cusv.sampler_create(  # type: ignore[no-untyped-call]
+                sampler_descriptor, _workspace_size = cusv.sampler_create(  # type: ignore[no-untyped-call]
                     handle=libhandle.handle,
                     sv=sv.array.data.ptr,
                     sv_data_type=cudaDataType.CUDA_C_64F,
@@ -435,7 +440,7 @@ class CuStateVecShotsBackend(_CuStateVecBaseBackend):
                     bit_ordering=measured_qubits,
                     bit_string_len=len(measured_qubits),
                     randnums=randnums,
-                    n_shots=n_shots,
+                    n_shots=circ_shots,
                     output=SamplerOutput.RANDNUM_ORDER,
                 )
 

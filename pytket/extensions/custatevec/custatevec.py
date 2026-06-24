@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from .utils import INSTALL_CUDA_ERROR_MESSAGE
 
@@ -27,7 +27,6 @@ except ImportError as _cuda_import_err:
     raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 
 import numpy as np
-
 import pytket.pauli
 from pytket.circuit import OpType, Qubit
 from pytket.utils.operators import QubitPauliOperator
@@ -129,7 +128,7 @@ def run_circuit(
             state = initial_statevector(
                 handle=handle,
                 n_qubits=circuit.n_qubits,
-                type=initial_state,  # type: ignore # noqa: PGH003
+                sv_type=cast(Literal["zero", "uniform", "ghz", "w"], initial_state),
                 dtype=cudaDataType.CUDA_C_64F,
             )
         else:

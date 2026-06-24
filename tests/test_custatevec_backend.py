@@ -1,19 +1,19 @@
 import numpy as np  # noqa: D100
 import pytest
 from cuquantum.bindings._utils import cudaDataType
-
 from pytket._tket.circuit import Circuit
 from pytket.circuit import BasisOrder
-from pytket.extensions.custatevec.backends import (
-    CuStateVecShotsBackend,
-    CuStateVecStateBackend,
-)
-from pytket.extensions.custatevec.custatevec import initial_statevector
-from pytket.extensions.custatevec.handle import CuStateVecHandle
 from pytket.extensions.qiskit.backends.aer import AerStateBackend
 from pytket.extensions.qulacs.backends.qulacs_backend import QulacsBackend
 from pytket.passes import CliffordSimp
 from pytket.utils.expectations import get_operator_expectation_value
+
+from pytket.extensions.custatevec.backends import (
+    CuStateVecShotsBackend,
+    CuStateVecStateBackend,
+)
+from pytket.extensions.custatevec.custatevec import initial_statevector, run_circuit
+from pytket.extensions.custatevec.handle import CuStateVecHandle
 
 # =====================================================
 # === TESTS FOR STATEVECTOR AND SHOT-BASED BACKENDS ===
@@ -63,6 +63,12 @@ def test_initial_statevector() -> None:
                     generated_state,
                     expected_state,
                 ), f"Mismatch for {state_name} with {n} qubits"
+
+
+def test_run_circuit_accepts_named_initial_state() -> None:
+    """Test that run_circuit can initialize statevectors from a state name."""
+    with CuStateVecHandle() as libhandle:
+        run_circuit(libhandle, Circuit(1), initial_state="uniform")
 
 
 # =====================================
@@ -367,6 +373,31 @@ def test_custatevecshots_basisorder() -> None:
     cu_result = cu_backend.get_result(cu_handle)
     assert cu_result.get_counts() == {(0, 1): 10}
     assert cu_result.get_counts(basis=BasisOrder.dlo) == {(1, 0): 10}
+
+
+def test_custatevecshots_process_circuits_sequence_n_shots() -> None:
+    """Test that batched shot simulation respects per-circuit shot counts."""
+    shot_counts = [7, 11]
+    c0 = Circuit(1, 1)
+    c0.measure_all()
+    c1 = Circuit(2, 2)
+    c1.X(1)
+    c1.measure_all()
+
+    cu_backend = CuStateVecShotsBackend()
+    handles = cu_backend.process_circuits([c0, c1], n_shots=shot_counts)
+    results = cu_backend.get_results(handles)
+
+    assert len(results[0].get_shots()) == shot_counts[0]
+    assert len(results[1].get_shots()) == shot_counts[1]
+
+
+def test_custatevecshots_rejects_mismatched_sequence_n_shots() -> None:
+    """Test that batched shot simulation rejects ambiguous shot counts."""
+    circuits = [Circuit(1, 1), Circuit(1, 1)]
+
+    with pytest.raises(ValueError, match="Length of n_shots"):
+        CuStateVecShotsBackend().process_circuits(circuits, n_shots=[1], valid_check=False)
 
 
 def test_custatevecshots_partial_measurement() -> None:
