@@ -3,7 +3,10 @@
 import ast
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 
 def test_extension_metadata_version_matches_project_version() -> None:
