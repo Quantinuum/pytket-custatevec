@@ -34,10 +34,6 @@ edit_uri: ""
     <img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat" alt="License">
   </a>
 
-  <a href="https://pepy.tech/project/pytket-custatevec">
-    <img src="https://img.shields.io/badge/downloads-0%2Fmonth-blue" alt="Downloads">
-  </a>
-
   <a href="https://tketusers.slack.com/">
       <img src="https://img.shields.io/badge/Slack-TKET%20Users-4A154B?style=flat&logo=slack" alt="Slack">
   </a>
