@@ -22,15 +22,15 @@ edit_uri: ""
 </div>
 
 <div class="external-badges">
-  <a href="https://github.com/quantinuum/pytket-custatevec/actions">
-    <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat&logo=github" alt="Build">
+  <a href="https://github.com/Quantinuum/pytket-custatevec/actions/workflows/build_and_test.yml">
+    <img src="https://github.com/Quantinuum/pytket-custatevec/actions/workflows/build_and_test.yml/badge.svg" alt="Build">
   </a>
 
   <a href="https://pypi.org/project/pytket-custatevec/">
-    <img src="https://img.shields.io/badge/pypi-v0.1.0-blue?style=flat&logo=pypi" alt="PyPI">
+    <img src="https://img.shields.io/pypi/v/pytket-custatevec.svg?logo=pypi" alt="PyPI">
   </a>
 
-  <a href="https://github.com/quantinuum/pytket-custatevec/blob/main/LICENSE">
+  <a href="https://github.com/Quantinuum/pytket-custatevec/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat" alt="License">
   </a>
 

@@ -3,7 +3,7 @@ import numpy as np  # noqa: D100
 from .utils import INSTALL_CUDA_ERROR_MESSAGE
 
 try:
-    from cuquantum.bindings._utils import cudaDataType
+    from cuquantum import cudaDataType
 except ImportError as _cuda_import_err:
     raise RuntimeError(INSTALL_CUDA_ERROR_MESSAGE.format(getattr(_cuda_import_err, "name", None))) from _cuda_import_err
 

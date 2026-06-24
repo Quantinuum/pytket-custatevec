@@ -1,6 +1,6 @@
 import numpy as np  # noqa: D100
 import pytest
-from cuquantum.bindings._utils import cudaDataType
+from cuquantum import cudaDataType
 from pytket._tket.circuit import Circuit
 from pytket.circuit import BasisOrder
 from pytket.extensions.qiskit.backends.aer import AerStateBackend
