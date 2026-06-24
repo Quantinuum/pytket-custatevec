@@ -11,8 +11,8 @@ import kaleido
 import numpy as np
 import pandas as pd
 import plotly.express as px
-
 from pytket._tket.circuit import Circuit
+
 from pytket.extensions.custatevec import CuStateVecShotsBackend, CuStateVecStateBackend
 
 # --- CONFIGURATION ---

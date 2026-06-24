@@ -1,6 +1,5 @@
 import numpy as np  # noqa: D100
 import pytest
-
 from pytket._tket.circuit import Circuit
 from pytket.circuit import Qubit
 from pytket.pauli import Pauli, QubitPauliString

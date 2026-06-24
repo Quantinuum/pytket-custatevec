@@ -70,7 +70,6 @@ lint.ignore = [
     "FBT001",  # Boolean positional value in function call.
     "FBT002",  # Boolean default value in function definition.
     "EXE002",  # Shebang is present but the file is not marked as executable.
-    "ANN101", # Checks that instance method self arguments have type annotations.
     "PLC0414", # Checks for import aliases that do not rename the original package.
 ]
 

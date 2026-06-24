@@ -1,13 +1,13 @@
 """Module for testing miscellaneous utility functions."""
 
 import numpy as np
-
 from pytket.architecture import Architecture
 from pytket.circuit import Circuit, Node
-from pytket.extensions.custatevec.backends import CuStateVecStateBackend
-from pytket.extensions.custatevec.utils import _remove_meas_and_implicit_swaps
 from pytket.passes import DefaultMappingPass
 from pytket.predicates import CompilationUnit
+
+from pytket.extensions.custatevec.backends import CuStateVecStateBackend
+from pytket.extensions.custatevec.utils import _remove_meas_and_implicit_swaps
 
 
 def test_remove_meas_and_implicit_swaps() -> None:
