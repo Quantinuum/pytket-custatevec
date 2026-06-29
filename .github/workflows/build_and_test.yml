@@ -173,7 +173,7 @@ jobs:
 
       # 📥 RETRIEVE THE BENCHMARK PLOTS
       - name: Download Benchmark Plots
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-plots
           path: docs/assets/
